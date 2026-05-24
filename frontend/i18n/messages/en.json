@@ -47,7 +47,9 @@
     "autoDetected": "Auto-detected",
     "selectBank": "Search or select bank...",
     "noMatches": "No matches",
-    "none": "None"
+    "none": "None",
+    "processing": "Processing...",
+    "datePlaceholder": "month/day/year"
   },
   "errors": {
     "somethingWentWrong": "Something went wrong",
@@ -263,7 +265,33 @@
     "supplementaryCardFeePlaceholder": "e.g., 150",
     "cardReplacementFeePlaceholder": "e.g., 50",
     "accountManagerNamePlaceholder": "e.g., Ahmed Al-Rashid (Bank RM)",
-    "accountManagerPhonePlaceholder": "e.g., +971 50 123 4567"
+    "accountManagerPhonePlaceholder": "e.g., +971 50 123 4567",
+    "issueDate": "Issue Date",
+    "classification": "Classification",
+    "accountManager": "Account Manager",
+    "smartExtract": "Smart Extract",
+    "smartExtractHint": "Upload any file (PDF benefits, account manager image, statement) — the system extracts all information automatically",
+    "extracting": "Analyzing...",
+    "uploadFileOrImage": "Upload File or Image",
+    "upTo": "up to",
+    "extractedSuccess": "Analyzed successfully",
+    "extractedData": "Extracted Data",
+    "extractConfirmHint": "Review the data before applying — you can edit any field after applying",
+    "applyData": "Apply Data",
+    "extractSuccess": "Extracted",
+    "extractFailed": "Failed to analyze file, please try again",
+    "benefitsCount": "benefit(s)",
+    "benefitName": "Benefit / Service",
+    "benefitNamePlaceholder": "e.g., Airport lounge access",
+    "benefitCount": "Times",
+    "benefitCountPlaceholder": "e.g., 3",
+    "benefitNotes": "Notes",
+    "benefitNotesPlaceholder": "e.g., per month",
+    "scanBack": "Back of Card",
+    "scanBackDesc": "Upload the back of the card to extract CVV (optional)",
+    "backScanInvalidFile": "Please select an image from your gallery",
+    "backScanSuccess": "Back card data extracted",
+    "backScanFailed": "Failed to scan back, try a clearer image"
   },
   "transactions": {
     "title": "Transactions",
@@ -441,7 +469,16 @@
     "biometricFailed": "Biometric registration failed",
     "removeBiometric": "Remove",
     "lastUsed": "Last used",
-    "registeredOn": "Registered"
+    "registeredOn": "Registered",
+    "dangerZone": "Danger Zone",
+    "dangerDesc": "Permanently deletes <strong>all transactions and statements</strong>. Cards remain. This cannot be undone.",
+    "dangerConfirmPhrase": "delete everything",
+    "dangerConfirmPrompt": "Type <strong>{phrase}</strong> to confirm:",
+    "dangerClearBtn": "Clear Everything",
+    "dangerCleared": "All data cleared",
+    "dangerSuccess": "Cleared successfully",
+    "dangerSuccessDetail": "{txns} transactions · {stmts} statements",
+    "dangerError": "Clear failed — please try again"
   },
   "cash": {
     "title": "Cash Management",

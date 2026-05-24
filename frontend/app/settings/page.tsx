@@ -498,10 +498,11 @@ export default function SettingsPage() {
 }
 
 function DangerZone() {
+  const { t } = useTranslations();
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState<{ txns: number; stmts: number } | null>(null);
-  const MAGIC = 'امسح كل شيء';
+  const MAGIC = t('settings.dangerConfirmPhrase');
 
   const handleClear = async () => {
     if (confirm !== MAGIC) return;
@@ -516,9 +517,9 @@ function DangerZone() {
         txns: (cleared?.transactions_deleted as number) ?? 0,
         stmts: (cleared?.statements_deleted as number) ?? 0,
       });
-      toast.success('تم مسح كل البيانات');
+      toast.success(t('settings.dangerCleared'));
     } catch {
-      toast.error('فشل المسح — حاول مجدداً');
+      toast.error(t('settings.dangerError'));
     } finally {
       setLoading(false);
       setConfirm('');
@@ -529,24 +530,24 @@ function DangerZone() {
     <div className="settings-section" style={{ borderColor: 'var(--danger)', marginTop: 'var(--space-6)' }}>
       <div className="settings-section-header" style={{ color: 'var(--danger)' }}>
         <AlertTriangle size={18} />
-        <h2 className="settings-section-title" style={{ color: 'var(--danger)' }}>منطقة الخطر</h2>
+        <h2 className="settings-section-title" style={{ color: 'var(--danger)' }}>{t('settings.dangerZone')}</h2>
       </div>
       <div className="settings-section-content">
         {done ? (
           <div style={{ padding: 'var(--space-4)', background: 'var(--danger-bg)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
-            <p style={{ fontWeight: 700, color: 'var(--danger)', marginBottom: 4 }}>تم المسح بنجاح</p>
+            <p style={{ fontWeight: 700, color: 'var(--danger)', marginBottom: 4 }}>{t('settings.dangerSuccess')}</p>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-              {done.txns} معاملة · {done.stmts} كشف
+              {t('settings.dangerSuccessDetail', { txns: done.txns, stmts: done.stmts })}
             </p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}>
-              يحذف <strong>كل المعاملات والكشوفات</strong> بشكل نهائي. الكروت تفضل موجودة. لا يمكن التراجع.
-            </p>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>
-              اكتب <strong style={{ color: 'var(--danger)' }}>{MAGIC}</strong> للتأكيد:
-            </p>
+            <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', margin: 0 }}
+              dangerouslySetInnerHTML={{ __html: t('settings.dangerDesc') }}
+            />
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}
+              dangerouslySetInnerHTML={{ __html: t('settings.dangerConfirmPrompt', { phrase: MAGIC }) }}
+            />
             <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
               <input
                 value={confirm}
@@ -561,7 +562,7 @@ function DangerZone() {
                 style={{ background: 'var(--danger)', color: '#fff', whiteSpace: 'nowrap', opacity: confirm !== MAGIC ? 0.4 : 1 }}
               >
                 {loading ? <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⟳</span> : <Trash2 size={15} />}
-                مسح كل شيء
+                {t('settings.dangerClearBtn')}
               </button>
             </div>
           </div>

@@ -178,7 +178,7 @@ function NewCardContent() {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = '';
-    if (!file.type.startsWith('image/')) { toast.error('اختر صورة من معرض الصور'); return; }
+    if (!file.type.startsWith('image/')) { toast.error(t('cards.backScanInvalidFile')); return; }
     setBackScanUploading(true);
     try {
       const dataUrl = await new Promise<string>((resolve, reject) => {
@@ -196,13 +196,13 @@ function NewCardContent() {
         ...(result.card_number && !prev.cardNumber ? { cardNumber: result.card_number.replace(/(\d{4})/g, '$1 ').trim() } : {}),
         ...(result.cardholder_name && !prev.cardholderName ? { cardholderName: result.cardholder_name } : {}),
       }));
-      toast.success('تم استخراج بيانات الوجه الخلفي');
+      toast.success(t('cards.backScanSuccess'));
     } catch {
-      toast.error('فشل مسح الوجه الخلفي، جرب صورة أوضح');
+      toast.error(t('cards.backScanFailed'));
     } finally {
       setBackScanUploading(false);
     }
-  }, []);
+  }, [t]);
 
   const applyExtractedData = useCallback((result: ExtractResult) => {
     const updates: Record<string, string> = {};
@@ -241,8 +241,8 @@ function NewCardContent() {
     }
 
     const totalFields = Object.keys(updates).length + (result.benefits?.length ?? 0);
-    toast.success((t('cards.extractSuccess') || 'تم استخراج') + ` ${totalFields} ` + (t('cards.fieldsExtracted') || 'حقل'));
-  }, []);
+    toast.success(`${t('cards.extractSuccess')} ${totalFields} ${t('cards.fieldsExtracted')}`);
+  }, [t]);
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -300,7 +300,7 @@ function NewCardContent() {
       // Show confirmation modal instead of immediate apply
       setPendingExtract(result);
     } catch {
-      toast.error(t('cards.extractFailed') || 'فشل تحليل الملف، جرب مرة أخرى');
+      toast.error(t('cards.extractFailed'));
     } finally {
       setExtracting(false);
     }
@@ -400,26 +400,26 @@ function NewCardContent() {
             <div className="card" style={{ maxWidth: 500, width: '100%', maxHeight: '85vh', overflow: 'auto', padding: 'var(--space-6)' }} onClick={e => e.stopPropagation()}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-3)' }}>
                 <CheckCircle size={22} color="var(--success)" />
-                <h3 style={{ margin: 0 }}>{t('cards.extractedData') || 'البيانات المستخرجة'}</h3>
+                <h3 style={{ margin: 0 }}>{t('cards.extractedData')}</h3>
                 <button type="button" onClick={() => setPendingExtract(null)} style={{ marginInlineStart: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)' }}><X size={18} /></button>
               </div>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '0 0 var(--space-4)' }}>
-                {t('cards.extractConfirmHint') || 'راجع البيانات قبل تطبيقها — يمكنك تعديل أي حقل بعد التطبيق'}
+                {t('cards.extractConfirmHint')}
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', marginBottom: 'var(--space-5)' }}>
                 {([
-                  { label: t('cards.cardName') || 'اسم البطاقة', value: pendingExtract.card_name },
-                  { label: t('cards.bankName') || 'البنك', value: pendingExtract.bank_name },
-                  { label: t('cards.cardNetwork') || 'الشبكة', value: pendingExtract.card_network },
-                  { label: t('cards.cardholderName') || 'اسم حامل البطاقة', value: pendingExtract.cardholder_name },
-                  { label: t('cards.creditLimit') || 'الحد الائتماني', value: pendingExtract.credit_limit ? `${pendingExtract.credit_limit} AED` : null },
-                  { label: t('cards.annualFee') || 'الرسوم السنوية', value: pendingExtract.annual_fee ? `${pendingExtract.annual_fee} AED` : null },
-                  { label: t('cards.paymentDue') || 'موعد السداد', value: pendingExtract.payment_due_date },
-                  { label: t('cards.statementDate') || 'تاريخ الكشف', value: pendingExtract.statement_date },
-                  { label: t('cards.latePaymentFee') || 'رسوم التأخر', value: pendingExtract.late_payment_fee ? `${pendingExtract.late_payment_fee} AED` : null },
-                  { label: t('cards.accountManager') || 'مدير الحساب', value: pendingExtract.account_manager_name },
-                  { label: t('cards.benefits') || 'المزايا', value: pendingExtract.benefits?.length ? `${pendingExtract.benefits.length} ${t('cards.benefitsCount') || 'ميزة'}` : null },
-                  { label: t('cards.bankEmails') || 'إيميلات البنك', value: pendingExtract.bank_emails?.length ? pendingExtract.bank_emails.join(', ') : null },
+                  { label: t('cards.cardName'), value: pendingExtract.card_name },
+                  { label: t('cards.bankName'), value: pendingExtract.bank_name },
+                  { label: t('cards.cardNetwork'), value: pendingExtract.card_network },
+                  { label: t('cards.cardholderName'), value: pendingExtract.cardholder_name },
+                  { label: t('cards.creditLimit'), value: pendingExtract.credit_limit ? `${pendingExtract.credit_limit} AED` : null },
+                  { label: t('cards.annualFee'), value: pendingExtract.annual_fee ? `${pendingExtract.annual_fee} AED` : null },
+                  { label: t('cards.paymentDue'), value: pendingExtract.payment_due_date },
+                  { label: t('cards.statementDate'), value: pendingExtract.statement_date },
+                  { label: t('cards.latePaymentFee'), value: pendingExtract.late_payment_fee ? `${pendingExtract.late_payment_fee} AED` : null },
+                  { label: t('cards.accountManager'), value: pendingExtract.account_manager_name },
+                  { label: t('cards.benefits'), value: pendingExtract.benefits?.length ? `${pendingExtract.benefits.length} ${t('cards.benefitsCount')}` : null },
+                  { label: t('cards.bankEmails'), value: pendingExtract.bank_emails?.length ? pendingExtract.bank_emails.join(', ') : null },
                 ] as Array<{label: string; value: string | null | undefined}>).filter(f => f.value).map(f => (
                   <div key={f.label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '7px 12px', background: 'var(--bg-secondary)', borderRadius: 8, fontSize: '0.85rem', gap: 'var(--space-3)' }}>
                     <span style={{ color: 'var(--text-secondary)', flexShrink: 0 }}>{f.label}</span>
@@ -429,10 +429,10 @@ function NewCardContent() {
               </div>
               <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
                 <button type="button" onClick={() => { applyExtractedData(pendingExtract); setPendingExtract(null); }} className="btn btn-primary" style={{ flex: 1 }}>
-                  <CheckCircle size={15} /> {t('cards.applyData') || 'تطبيق البيانات'}
+                  <CheckCircle size={15} /> {t('cards.applyData')}
                 </button>
                 <button type="button" onClick={() => setPendingExtract(null)} className="btn btn-secondary">
-                  {t('common.cancel') || 'إلغاء'}
+                  {t('common.cancel')}
                 </button>
               </div>
             </div>
@@ -516,10 +516,10 @@ function NewCardContent() {
               <div style={{ marginTop: 'var(--space-3)', padding: 'var(--space-3)', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
                 <FlipHorizontal size={16} color="var(--primary)" />
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', flex: 1 }}>
-                  {t('cards.scanBackDesc') || 'ارفع الوجه الخلفي لاستخراج الـ CVV (اختياري)'}
+                  {t('cards.scanBackDesc')}
                 </span>
                 <button type="button" className="btn btn-secondary" onClick={() => backFileInputRef.current?.click()} disabled={backScanUploading} style={{ whiteSpace: 'nowrap' }}>
-                  {backScanUploading ? <><Loader2 size={14} className="scan-spinner" /> {t('common.processing') || 'جاري...'}</> : <><Upload size={14} /> {t('cards.scanBack') || 'الوجه الخلفي'}</>}
+                  {backScanUploading ? <><Loader2 size={14} className="scan-spinner" /> {t('common.processing')}</> : <><Upload size={14} /> {t('cards.scanBack')}</>}
                 </button>
                 <input ref={backFileInputRef} type="file" accept="image/*" onChange={handleBackScan} style={{ display: 'none' }} />
               </div>
@@ -651,7 +651,7 @@ function NewCardContent() {
                   </div>
 
                   <div className="form-group">
-                    <label>{t('cards.classification') || 'Classification'}</label>
+                    <label>{t('cards.classification')}</label>
                     <SearchableSelect
                       value={formData.classification}
                       onChange={(v) => setFormData({ ...formData, classification: v })}
@@ -685,12 +685,14 @@ function NewCardContent() {
               {/* Issue Date */}
               <div className="form-section">
                 <div className="form-group">
-                  <label>{t('cards.issueDate') || 'Issue Date'}</label>
-                  <input
-                    type="date"
-                    value={formData.issue_date}
-                    onChange={(e) => setFormData({ ...formData, issue_date: e.target.value })}
-                  />
+                  <label>{t('cards.issueDate')}</label>
+                  <div className={`date-field-wrap${!formData.issue_date ? ' empty' : ''}`} data-placeholder={t('common.datePlaceholder')}>
+                    <input
+                      type="date"
+                      value={formData.issue_date}
+                      onChange={(e) => setFormData({ ...formData, issue_date: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -784,11 +786,13 @@ function NewCardContent() {
                     </div>
                     <div className="form-group">
                       <label>{t('cards.lastPaymentDate') || 'Last Payment Date'}</label>
-                      <input
-                        type="date"
-                        value={formData.last_payment_date}
-                        onChange={(e) => setFormData({ ...formData, last_payment_date: e.target.value })}
-                      />
+                      <div className={`date-field-wrap${!formData.last_payment_date ? ' empty' : ''}`} data-placeholder={t('common.datePlaceholder')}>
+                        <input
+                          type="date"
+                          value={formData.last_payment_date}
+                          onChange={(e) => setFormData({ ...formData, last_payment_date: e.target.value })}
+                        />
+                      </div>
                     </div>
                     <div className="form-group">
                       <label>{t('cards.lastPaymentAmount') || 'Last Payment Amount'}</label>
@@ -820,11 +824,13 @@ function NewCardContent() {
                   </div>
                   <div className="form-group">
                     <label>{t('cards.feeDueDate') || 'Fee Due Date'}</label>
-                    <input
-                      type="date"
-                      value={formData.fee_due_date}
-                      onChange={(e) => setFormData({ ...formData, fee_due_date: e.target.value })}
-                    />
+                    <div className={`date-field-wrap${!formData.fee_due_date ? ' empty' : ''}`} data-placeholder={t('common.datePlaceholder')}>
+                      <input
+                        type="date"
+                        value={formData.fee_due_date}
+                        onChange={(e) => setFormData({ ...formData, fee_due_date: e.target.value })}
+                      />
+                    </div>
                   </div>
                   <div className="form-group">
                     <label>{t('cards.latePaymentFee') || 'Late Payment Fee'}</label>
@@ -968,9 +974,9 @@ function NewCardContent() {
               <div className="form-section">
                 <div className="section-header">
                   <FileText size={20} />
-                  <h3 className="form-section-title">{t('cards.smartExtract') || 'تحليل ملف ذكي'}</h3>
+                  <h3 className="form-section-title">{t('cards.smartExtract')}</h3>
                 </div>
-                <p className="form-hint">{t('cards.smartExtractHint') || 'ارفع أي ملف (PDF مزايا، صورة مدير الحساب، كشف حساب) — النظام يستخرج كل المعلومات تلقائياً'}</p>
+                <p className="form-hint">{t('cards.smartExtractHint')}</p>
                 <div className="benefits-input-row">
                   <button
                     type="button"
@@ -978,9 +984,9 @@ function NewCardContent() {
                     onClick={() => docInputRef.current?.click()}
                     disabled={extracting}
                   >
-                    {extracting ? <><Loader2 size={16} className="scan-spinner" /> {t('cards.extracting') || 'جاري التحليل...'}</> : <><Upload size={16} /> {t('cards.uploadFileOrImage') || 'رفع ملف أو صورة'}</>}
+                    {extracting ? <><Loader2 size={16} className="scan-spinner" /> {t('cards.extracting')}</> : <><Upload size={16} /> {t('cards.uploadFileOrImage')}</>}
                   </button>
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #888)' }}>PDF, JPG, PNG — {t('cards.upTo') || 'حتى'} 20MB</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted, #888)' }}>PDF, JPG, PNG — {t('cards.upTo')} 20MB</span>
                 </div>
                 <input ref={docInputRef} type="file" accept="image/*,.pdf" onChange={handleDocumentExtract} style={{ display: 'none' }} />
                 {uploadedFileName && (
@@ -994,7 +1000,7 @@ function NewCardContent() {
                     )}
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <p style={{ fontSize: '0.82rem', fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{uploadedFileName}</p>
-                      <p style={{ fontSize: '0.72rem', color: 'var(--text-muted,#888)', margin: '2px 0 0' }}>{t('cards.extractedSuccess') || 'تم التحليل بنجاح ✓'}</p>
+                      <p style={{ fontSize: '0.72rem', color: 'var(--text-muted,#888)', margin: '2px 0 0' }}>{t('cards.extractedSuccess')} ✓</p>
                     </div>
                     <button type="button" onClick={() => { setUploadedFileName(null); setUploadedFilePreview(null); }} style={{ padding: '4px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted,#888)', flexShrink: 0 }}>
                       <X size={14} />
@@ -1009,36 +1015,36 @@ function NewCardContent() {
                   <Star size={20} />
                   <h3 className="form-section-title">{t('cards.benefits') || 'Card Benefits'}</h3>
                 </div>
-                <p className="form-hint">{t('cards.benefitsHint') || 'أضف مزايا البطاقة مع عدد المرات والملاحظات'}</p>
+                <p className="form-hint">{t('cards.benefitsHint')}</p>
 
                 {/* Structured benefit input */}
                 <div className="grid grid-4" style={{ marginBottom: '8px' }}>
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                    <label>{t('cards.benefitName') || 'الميزة / الخدمة'}</label>
+                    <label>{t('cards.benefitName')}</label>
                     <input
                       type="text"
                       value={benefitInput.description}
                       onChange={(e) => setBenefitInput(p => ({ ...p, description: e.target.value }))}
                       onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addBenefit(); } }}
-                      placeholder={t('cards.benefitNamePlaceholder') || 'مثال: دخول صالة المطار'}
+                      placeholder={t('cards.benefitNamePlaceholder')}
                     />
                   </div>
                   <div className="form-group">
-                    <label>{t('cards.benefitCount') || 'عدد المرات'}</label>
+                    <label>{t('cards.benefitCount')}</label>
                     <input
                       type="text"
                       value={benefitInput.count}
                       onChange={(e) => setBenefitInput(p => ({ ...p, count: e.target.value }))}
-                      placeholder={t('cards.benefitCountPlaceholder') || 'مثال: 3'}
+                      placeholder={t('cards.benefitCountPlaceholder')}
                     />
                   </div>
                   <div className="form-group">
-                    <label>{t('cards.benefitNotes') || 'ملاحظات'}</label>
+                    <label>{t('cards.benefitNotes')}</label>
                     <input
                       type="text"
                       value={benefitInput.notes}
                       onChange={(e) => setBenefitInput(p => ({ ...p, notes: e.target.value }))}
-                      placeholder={t('cards.benefitNotesPlaceholder') || 'مثال: في الشهر'}
+                      placeholder={t('cards.benefitNotesPlaceholder')}
                     />
                   </div>
                 </div>

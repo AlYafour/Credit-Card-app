@@ -47,7 +47,9 @@
     "autoDetected": "اكتشاف تلقائي",
     "selectBank": "ابحث أو اختر البنك...",
     "noMatches": "لا توجد نتائج",
-    "none": "بدون تصنيف"
+    "none": "بدون تصنيف",
+    "processing": "جاري...",
+    "datePlaceholder": "الشهر/اليوم/السنة"
   },
   "errors": {
     "somethingWentWrong": "حدث خطأ ما",
@@ -263,7 +265,33 @@
     "supplementaryCardFeePlaceholder": "مثال: 150",
     "cardReplacementFeePlaceholder": "مثال: 50",
     "accountManagerNamePlaceholder": "مثال: أحمد الراشد (مدير العلاقات في البنك)",
-    "accountManagerPhonePlaceholder": "+971 50 123 4567"
+    "accountManagerPhonePlaceholder": "+971 50 123 4567",
+    "issueDate": "تاريخ الإصدار",
+    "classification": "التصنيف",
+    "accountManager": "مدير الحساب",
+    "smartExtract": "تحليل ذكي",
+    "smartExtractHint": "ارفع أي ملف (PDF مزايا، صورة مدير الحساب، كشف حساب) — النظام يستخرج كل المعلومات تلقائياً",
+    "extracting": "جاري التحليل...",
+    "uploadFileOrImage": "رفع ملف أو صورة",
+    "upTo": "حتى",
+    "extractedSuccess": "تم التحليل بنجاح",
+    "extractedData": "البيانات المستخرجة",
+    "extractConfirmHint": "راجع البيانات قبل تطبيقها — يمكنك تعديل أي حقل بعد التطبيق",
+    "applyData": "تطبيق البيانات",
+    "extractSuccess": "تم استخراج",
+    "extractFailed": "فشل تحليل الملف، جرب مرة أخرى",
+    "benefitsCount": "ميزة",
+    "benefitName": "الميزة / الخدمة",
+    "benefitNamePlaceholder": "مثال: دخول صالة المطار",
+    "benefitCount": "عدد المرات",
+    "benefitCountPlaceholder": "مثال: 3",
+    "benefitNotes": "ملاحظات",
+    "benefitNotesPlaceholder": "مثال: في الشهر",
+    "scanBack": "الوجه الخلفي",
+    "scanBackDesc": "ارفع الوجه الخلفي لاستخراج الـ CVV (اختياري)",
+    "backScanInvalidFile": "اختر صورة من معرض الصور",
+    "backScanSuccess": "تم استخراج بيانات الوجه الخلفي",
+    "backScanFailed": "فشل مسح الوجه الخلفي، جرب صورة أوضح"
   },
   "transactions": {
     "title": "المعاملات",
@@ -440,7 +468,16 @@
     "biometricFailed": "فشل تسجيل البصمة",
     "removeBiometric": "حذف",
     "lastUsed": "آخر استخدام",
-    "registeredOn": "تاريخ التسجيل"
+    "registeredOn": "تاريخ التسجيل",
+    "dangerZone": "منطقة الخطر",
+    "dangerDesc": "يحذف <strong>كل المعاملات والكشوفات</strong> بشكل نهائي. الكروت تفضل موجودة. لا يمكن التراجع.",
+    "dangerConfirmPhrase": "امسح كل شيء",
+    "dangerConfirmPrompt": "اكتب <strong>{phrase}</strong> للتأكيد:",
+    "dangerClearBtn": "مسح كل شيء",
+    "dangerCleared": "تم مسح كل البيانات",
+    "dangerSuccess": "تم المسح بنجاح",
+    "dangerSuccessDetail": "{txns} معاملة · {stmts} كشف",
+    "dangerError": "فشل المسح — حاول مجدداً"
   },
   "cash": {
     "title": "إدارة النقد",
