@@ -280,7 +280,7 @@ export default function CashPage() {
             <p style={{ color: 'var(--text-secondary)', margin: 0 }}>{ar ? 'جاري التحميل…' : 'Loading…'}</p>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="card" style={{ textAlign: 'center', padding: 'var(--space-12)' }}>
+          <div className="card" style={{ textAlign: 'center', padding: '150px' }}>
             <Banknote size={48} style={{ color: 'var(--text-secondary)', margin: '0 auto var(--space-4)', opacity: 0.4 }} />
             <h3 style={{ marginBottom: 'var(--space-2)' }}>
               {ar ? 'لا توجد سجلات' : 'No entries found'}

@@ -287,25 +287,25 @@ export default function DashboardPage() {
               <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>
                 {t('dashboard.avgTransaction') || 'Avg Transaction'}
               </p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)' }}>
-                {formatAmount(stats.avgAmount)} <span style={{ fontSize: '0.85rem', opacity: 0.6 }}><CurrencySymbol code="AED" size={14} /></span>
+              <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                {formatAmount(stats.avgAmount)} <span style={{ fontSize: '0.85rem', opacity: 0.6, display: 'inline-flex', alignItems: 'center' }}><CurrencySymbol code="AED" size={14} /></span>
               </p>
             </div>
             <div className="card" style={{ padding: 'var(--space-4)', textAlign: 'center' }}>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>
                 {t('dashboard.largestTransaction') || 'Largest Transaction'}
               </p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)' }}>
-                <ArrowUpRight size={18} style={{ verticalAlign: 'middle', color: 'var(--danger)', marginRight: '0.15rem' }} />
-                {formatAmount(stats.maxAmount)} <span style={{ fontSize: '0.85rem', opacity: 0.6 }}><CurrencySymbol code="AED" size={14} /></span>
+              <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                <ArrowUpRight size={18} style={{ color: 'var(--danger)', flexShrink: 0 }} />
+                {formatAmount(stats.maxAmount)} <span style={{ fontSize: '0.85rem', opacity: 0.6, display: 'inline-flex', alignItems: 'center' }}><CurrencySymbol code="AED" size={14} /></span>
               </p>
             </div>
             <div className="card" style={{ padding: 'var(--space-4)', textAlign: 'center' }}>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>
                 {t('dashboard.cardsUsed') || 'Cards Used'}
               </p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)' }}>
-                <CreditCard size={18} style={{ verticalAlign: 'middle', color: 'var(--primary)', marginRight: '0.25rem' }} />
+              <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                <CreditCard size={18} style={{ color: 'var(--primary)', flexShrink: 0 }} />
                 {stats.cardsUsed}
               </p>
             </div>
@@ -313,8 +313,8 @@ export default function DashboardPage() {
               <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 600 }}>
                 {t('dashboard.topCategory') || 'Top Category'}
               </p>
-              <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)' }}>
-                <BarChart3 size={18} style={{ verticalAlign: 'middle', color: 'var(--accent)', marginRight: '0.25rem' }} />
+              <p style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}>
+                <BarChart3 size={18} style={{ color: 'var(--accent)', flexShrink: 0 }} />
                 {stats.topCategory}
               </p>
             </div>
@@ -325,8 +325,8 @@ export default function DashboardPage() {
         {billing && billing.items.length > 0 && (
           <div className="card mb-8">
             <div className="billing-header-row">
-              <h3 className="card-section-title-small" style={{ marginBottom: 0 }}>
-                <CalendarClock size={18} style={{ verticalAlign: 'middle', marginInlineEnd: '0.5rem' }} />
+              <h3 className="card-section-title-small" style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <CalendarClock size={18} style={{ flexShrink: 0 }} />
                 {t('dashboard.billingOverview') || 'Billing Overview'}
               </h3>
               <div className="billing-total">
@@ -405,8 +405,8 @@ export default function DashboardPage() {
         {recentTransactions.length > 0 && (
           <div className="card">
             <div className="card-header-row">
-              <h3 className="card-section-title-small" style={{ marginBottom: 0 }}>
-                <Receipt size={18} style={{ verticalAlign: 'middle', marginRight: '0.5rem' }} />
+              <h3 className="card-section-title-small" style={{ marginBottom: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Receipt size={18} style={{ flexShrink: 0 }} />
                 {t('dashboard.recentTransactions') || 'Recent Transactions'}
               </h3>
               <Link href="/transactions" className="btn btn-secondary btn-sm">

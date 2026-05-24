@@ -119,7 +119,7 @@ export default function StatementsHistoryPage() {
 
   return (
     <Layout>
-      <div className="page-container" style={{ maxWidth: 900 }}>
+      <div className="page-container">
 
         {/* ── Header ── */}
         <div className="page-header-section" style={{ marginBottom: 'var(--space-6)' }}>
@@ -145,7 +145,7 @@ export default function StatementsHistoryPage() {
 
         {/* ── Empty state ── */}
         {statements.length === 0 ? (
-          <div className="card" style={{ textAlign: 'center', padding: 'var(--space-12)' }}>
+          <div className="card" style={{ textAlign: 'center', padding: '150px' }}>
             <FileText size={48} style={{ color: 'var(--text-secondary)', margin: '0 auto var(--space-4)' }} />
             <h3 style={{ marginBottom: 'var(--space-2)' }}>
               {ar ? 'لا توجد كشوفات مستوردة بعد' : 'No statements imported yet'}

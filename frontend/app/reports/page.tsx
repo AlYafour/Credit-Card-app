@@ -166,7 +166,7 @@ export default function ReportsPage() {
 
   return (
     <Layout>
-      <div className="page-container" style={{ maxWidth: 1000 }}>
+      <div className="page-container">
 
         {/* ── Header ── */}
         <div className="page-header-section" style={{ marginBottom: 'var(--space-4)' }}>
