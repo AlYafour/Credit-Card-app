@@ -331,7 +331,7 @@ class CardViewSet(viewsets.ModelViewSet):
             try:
                 import anthropic
                 client = anthropic.Anthropic(api_key=anthropic_key)
-                for model_name in ['claude-sonnet-4-20250514', 'claude-3-5-sonnet-20241022', 'claude-3-5-sonnet-latest']:
+                for model_name in ['claude-sonnet-4-6', 'claude-3-5-sonnet-20241022', 'claude-3-5-sonnet-latest']:
                     try:
                         message = client.messages.create(
                             model=model_name, max_tokens=1024,
@@ -565,7 +565,7 @@ class CardViewSet(viewsets.ModelViewSet):
                     ]
 
                 message = client.messages.create(
-                    model='claude-sonnet-4-20250514', max_tokens=2048,
+                    model='claude-sonnet-4-6', max_tokens=2048,
                     messages=[{'role': 'user', 'content': content}]
                 )
                 text = message.content[0].text.strip()
@@ -1150,7 +1150,7 @@ class CardViewSet(viewsets.ModelViewSet):
                     {'type': 'text', 'text': prompt}
                 ]
             message = client.messages.create(
-                model='claude-sonnet-4-20250514', max_tokens=8192,
+                model='claude-sonnet-4-6', max_tokens=8192,
                 messages=[{'role': 'user', 'content': content}]
             )
             response_text = message.content[0].text.strip()
@@ -2149,7 +2149,7 @@ Rules:
             else:
                 claude_msgs.append({'role': 'user', 'content': user_message})
             message = client.messages.create(
-                model='claude-sonnet-4-20250514', max_tokens=2048,
+                model='claude-sonnet-4-6', max_tokens=2048,
                 system=system_prompt, messages=claude_msgs,
             )
             ai_response = message.content[0].text.strip()
