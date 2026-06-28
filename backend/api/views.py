@@ -14,7 +14,7 @@ from django.db.models import Sum, Q, Count
 from django.http import HttpResponse
 from django.utils import timezone
 from datetime import datetime, timedelta
-from .models import Card, Transaction, CashEntry, ChatSession, ChatMessage, WebAuthnCredential, BankPassword
+from .models import Card, Transaction, CashEntry, ChatSession, ChatMessage, WebAuthnCredential, BankPassword, PasswordResetToken
 from .serializers import (
     UserSerializer, RegisterSerializer, CardSerializer, CardUpdateSerializer,
     TransactionSerializer, CashEntrySerializer, ChatSessionSerializer, ChatMessageSerializer
@@ -169,6 +169,77 @@ def change_password(request):
     request.user.set_password(new_password)
     request.user.save()
     return Response({'message': 'Password changed successfully'})
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def forgot_password_request(request):
+    import secrets
+    email = (request.data.get('email') or '').strip().lower()
+    if not email:
+        return Response({'detail': 'Email is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    from django.contrib.auth import get_user_model
+    User = get_user_model()
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        # Don't reveal whether email exists — always return 200
+        return Response({'detail': 'If that email exists, a reset link has been sent.'})
+
+    # Invalidate any existing unused tokens for this user
+    PasswordResetToken.objects.filter(user=user, used=False).update(used=True)
+
+    token = secrets.token_urlsafe(32)
+    PasswordResetToken.objects.create(
+        user=user,
+        token=token,
+        expires_at=timezone.now() + timedelta(hours=1),
+    )
+
+    return Response({
+        'detail': 'If that email exists, a reset link has been sent.',
+        'token': token,
+        'user_name': user.full_name or user.email,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password_confirm(request):
+    token_str = (request.data.get('token') or '').strip()
+    new_password = request.data.get('new_password') or ''
+
+    if not token_str or not new_password:
+        return Response({'detail': 'Token and new_password are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if len(new_password) < 8:
+        return Response({'detail': 'Password must be at least 8 characters'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        reset_token = PasswordResetToken.objects.select_related('user').get(token=token_str)
+    except PasswordResetToken.DoesNotExist:
+        return Response({'detail': 'Invalid or expired reset link'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if reset_token.used:
+        return Response({'detail': 'This reset link has already been used'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if timezone.now() > reset_token.expires_at:
+        return Response({'detail': 'Reset link has expired. Please request a new one.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    from django.contrib.auth.password_validation import validate_password
+    from django.core.exceptions import ValidationError as DjangoValidationError
+    try:
+        validate_password(new_password, reset_token.user)
+    except DjangoValidationError as e:
+        return Response({'detail': e.messages[0]}, status=status.HTTP_400_BAD_REQUEST)
+
+    reset_token.user.set_password(new_password)
+    reset_token.user.save()
+    reset_token.used = True
+    reset_token.save()
+
+    return Response({'message': 'Password reset successfully. You can now log in.'})
 
 
 class CardViewSet(viewsets.ModelViewSet):

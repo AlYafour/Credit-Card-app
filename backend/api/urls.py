@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     register, login, refresh_token, profile, change_password, export_data,
+    forgot_password_request, reset_password_confirm,
     CardViewSet, TransactionViewSet, CashEntryViewSet,
     ChatSessionViewSet, ChatMessageViewSet, chat_send,
     webauthn_register_options, webauthn_register_verify,
@@ -31,6 +32,8 @@ urlpatterns = [
     path('auth/refresh/', refresh_token, name='refresh'),
     path('auth/me/', profile, name='profile'),
     path('auth/change-password/', change_password, name='change-password'),
+    path('auth/forgot-password/', forgot_password_request, name='forgot-password'),
+    path('auth/reset-password/', reset_password_confirm, name='reset-password'),
     path('export/', export_data, name='export-data'),
     path('chat/send/', chat_send, name='chat-send'),
     path('auth/webauthn/register/options/', webauthn_register_options, name='webauthn-register-options'),
