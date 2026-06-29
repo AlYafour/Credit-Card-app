@@ -134,13 +134,11 @@ export default function BasketsPage() {
   const [addingRuleTo, setAddingRuleTo] = useState<string | null>(null);
   const [newMerchant, setNewMerchant] = useState({ name: '', matchType: 'contains' as typeof MATCH_TYPES[number] });
   const [classifying, setClassifying] = useState(false);
-  const [summary, setSummary] = useState<{ company: number; personal: number; unclassified: number } | null>(null);
 
   const load = useCallback(async () => {
     try {
-      const [gs, sum] = await Promise.all([merchantGroupsAPI.list(), merchantGroupsAPI.summary()]);
+      const gs = await merchantGroupsAPI.list();
       setGroups(gs);
-      setSummary(sum);
     } catch {
       toast.error('Failed to load baskets');
     } finally {
@@ -222,11 +220,13 @@ export default function BasketsPage() {
       .catch(() => toast.error('Export failed'));
   }
 
-  const summaryItems = summary ? [
-    { label: t('companySummary'), value: summary.company, icon: <Building2 size={20} />, color: 'var(--primary)' },
-    { label: t('personalSummary'), value: summary.personal, icon: <User size={20} />, color: '#10b981' },
-    { label: t('unclassified'), value: summary.unclassified, icon: <HelpCircle size={20} />, color: 'var(--text-secondary)' },
-  ] : [];
+  const totalMonthly = groups.reduce((s, g) => s + (g.monthly_spent || 0), 0);
+  const totalTxns = groups.reduce((s, g) => s + (g.transaction_count || 0), 0);
+  const summaryItems = [
+    { label: t('totalBaskets') || 'عدد السلال', value: groups.length, icon: <ShoppingBasket size={20} />, color: 'var(--primary)', isCount: true },
+    { label: t('totalMonthlySpent') || 'الإنفاق الشهري', value: totalMonthly, icon: <Tag size={20} />, color: '#10b981', isCount: false },
+    { label: t('totalTransactions') || 'إجمالي المعاملات', value: totalTxns, icon: <RefreshCw size={20} />, color: '#3b82f6', isCount: true },
+  ];
 
   return (
     <Layout>
@@ -262,7 +262,7 @@ export default function BasketsPage() {
         </div>
 
         {/* ── Summary strip ── */}
-        {summary && (
+        {!loading && (
           <div className="basket-summary-row mb-6">
             {summaryItems.map(item => (
               <div key={item.label} className="card basket-summary-card">
@@ -273,7 +273,7 @@ export default function BasketsPage() {
                   <div className="basket-summary-label">{item.label}</div>
                   <div className="basket-summary-value">
                     {item.value.toLocaleString(undefined, { maximumFractionDigits: 0 })}
-                    <span className="basket-summary-currency"> AED</span>
+                    {!item.isCount && <span className="basket-summary-currency"> AED</span>}
                   </div>
                 </div>
               </div>
@@ -281,11 +281,19 @@ export default function BasketsPage() {
           </div>
         )}
 
-        {/* ── Create form ── */}
+        {/* ── Create modal ── */}
         {showCreate && (
-          <div className="card mb-6">
-            <h3 className="section-title mb-4">{t('newBasket')}</h3>
-            <BasketForm t={t} onSave={handleCreate} onCancel={() => setShowCreate(false)} />
+          <div className="basket-modal-overlay" onClick={() => setShowCreate(false)}>
+            <div className="basket-modal" onClick={e => e.stopPropagation()}>
+              <div className="basket-modal-header">
+                <h3 className="basket-modal-title">
+                  <ShoppingBasket size={18} style={{ color: 'var(--primary)' }} />
+                  {t('newBasket')}
+                </h3>
+                <button onClick={() => setShowCreate(false)} className="btn-icon"><X size={18} /></button>
+              </div>
+              <BasketForm t={t} onSave={handleCreate} onCancel={() => setShowCreate(false)} />
+            </div>
           </div>
         )}
 
@@ -306,15 +314,23 @@ export default function BasketsPage() {
             {groups.map(group => (
               <div key={group.id} className="card basket-card" style={{ borderTop: `3px solid ${group.color}` }}>
                 {editingId === group.id ? (
-                  <>
-                    <h3 className="section-title mb-4">{t('editBasket')}</h3>
-                    <BasketForm
-                      t={t}
-                      initial={group}
-                      onSave={data => handleUpdate(group.id, data)}
-                      onCancel={() => setEditingId(null)}
-                    />
-                  </>
+                  <div className="basket-modal-overlay" onClick={() => setEditingId(null)}>
+                    <div className="basket-modal" onClick={e => e.stopPropagation()}>
+                      <div className="basket-modal-header">
+                        <h3 className="basket-modal-title">
+                          <Edit2 size={18} style={{ color: 'var(--primary)' }} />
+                          {t('editBasket')}
+                        </h3>
+                        <button onClick={() => setEditingId(null)} className="btn-icon"><X size={18} /></button>
+                      </div>
+                      <BasketForm
+                        t={t}
+                        initial={group}
+                        onSave={data => handleUpdate(group.id, data)}
+                        onCancel={() => setEditingId(null)}
+                      />
+                    </div>
+                  </div>
                 ) : (
                   <>
                     {/* Card header */}

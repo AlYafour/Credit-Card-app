@@ -2825,6 +2825,42 @@ html[dir="rtl"] .credit-card-error {
   color: var(--text-secondary);
 }
 
+.basket-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: var(--space-4);
+  backdrop-filter: blur(3px);
+}
+.basket-modal {
+  background: var(--card-bg-solid, var(--bg));
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  width: 100%;
+  max-width: 440px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+  border: 1px solid var(--border);
+}
+.basket-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-5);
+}
+.basket-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
 .basket-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
