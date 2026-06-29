@@ -2825,6 +2825,145 @@ html[dir="rtl"] .credit-card-error {
   color: var(--text-secondary);
 }
 
+/* ── Merchant Picker ── */
+.merchant-picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 300;
+  padding: var(--space-4);
+  backdrop-filter: blur(4px);
+}
+.merchant-picker {
+  background: var(--card-bg-solid, var(--bg));
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: 0 24px 64px rgba(0,0,0,0.3);
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  max-height: 80vh;
+  overflow: hidden;
+}
+.merchant-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.merchant-picker-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.merchant-picker-search {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.merchant-picker-search input {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-family: inherit;
+  background: var(--bg-secondary, var(--bg));
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.merchant-picker-search input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(194,156,53,0.1);
+}
+.merchant-picker-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 8px;
+}
+.merchant-picker-empty {
+  text-align: center;
+  padding: 32px 16px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+.merchant-picker-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: start;
+  transition: background 0.1s;
+  color: var(--text);
+}
+.merchant-picker-item:hover {
+  background: var(--bg-hover, var(--primary-bg));
+}
+.merchant-picker-item.selected {
+  background: var(--primary-bg);
+}
+.merchant-picker-check {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 1.5px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--primary);
+  background: transparent;
+  transition: border-color 0.1s, background 0.1s;
+}
+.merchant-picker-item.selected .merchant-picker-check {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: white;
+}
+.merchant-picker-name {
+  flex: 1;
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.merchant-picker-count {
+  font-size: 11px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  background: var(--border);
+  padding: 2px 7px;
+  border-radius: 20px;
+}
+.merchant-picker-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+  gap: 8px;
+}
+.merchant-picker-sel-label {
+  font-size: 13px;
+  color: var(--primary);
+  font-weight: 600;
+  min-width: 60px;
+}
+
 .basket-modal-overlay {
   position: fixed;
   inset: 0;

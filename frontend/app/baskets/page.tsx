@@ -11,12 +11,109 @@ import {
   ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { merchantGroupsAPI, MerchantGroup } from '../api/merchant-groups';
+import { merchantsAPI, Merchant } from '../api/merchants';
 import { transactionsAPI } from '../api/transactions';
 
 const COLORS = ['#6b2c91','#10b981','#f59e0b','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6'];
 const MATCH_TYPES = ['contains', 'exact', 'starts_with'] as const;
 
 type TFn = (key: string, params?: Record<string, string | number>) => string;
+
+// ── Merchant picker dropdown ──────────────────────────────────────────────────
+function MerchantPicker({
+  existingNames,
+  onAdd,
+  onClose,
+}: {
+  existingNames: string[];
+  onAdd: (names: string[]) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [merchants, setMerchants] = useState<Merchant[]>([]);
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [loadingMerchants, setLoadingMerchants] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    merchantsAPI.list().then(d => { setMerchants(d.items); setLoadingMerchants(false); })
+      .catch(() => setLoadingMerchants(false));
+  }, []);
+
+  const filtered = merchants.filter(m =>
+    !existingNames.includes(m.merchant_name) &&
+    m.merchant_name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  function toggle(name: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(name) ? next.delete(name) : next.add(name);
+      return next;
+    });
+  }
+
+  async function handleConfirm() {
+    if (!selected.size) return;
+    setSaving(true);
+    try { await onAdd(Array.from(selected)); onClose(); }
+    finally { setSaving(false); }
+  }
+
+  return (
+    <div className="merchant-picker-overlay" onClick={onClose}>
+      <div className="merchant-picker" onClick={e => e.stopPropagation()}>
+        <div className="merchant-picker-header">
+          <span className="merchant-picker-title">اختر تجاراً من معاملاتك</span>
+          <button className="btn-icon" onClick={onClose}><X size={16} /></button>
+        </div>
+        <div className="merchant-picker-search">
+          <input
+            autoFocus
+            placeholder="ابحث عن تاجر..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="merchant-picker-list">
+          {loadingMerchants ? (
+            <div className="merchant-picker-empty">جاري التحميل...</div>
+          ) : filtered.length === 0 ? (
+            <div className="merchant-picker-empty">
+              {search ? 'لا توجد نتائج' : 'جميع التجار مضافون بالفعل'}
+            </div>
+          ) : filtered.map(m => (
+            <button
+              key={m.merchant_name}
+              type="button"
+              className={`merchant-picker-item${selected.has(m.merchant_name) ? ' selected' : ''}`}
+              onClick={() => toggle(m.merchant_name)}
+            >
+              <span className="merchant-picker-check">
+                {selected.has(m.merchant_name) && <Check size={13} />}
+              </span>
+              <span className="merchant-picker-name">{m.merchant_name}</span>
+              <span className="merchant-picker-count">{m.transaction_count} معاملة</span>
+            </button>
+          ))}
+        </div>
+        <div className="merchant-picker-footer">
+          <span className="merchant-picker-sel-label">
+            {selected.size > 0 ? `${selected.size} محدد` : ''}
+          </span>
+          <button
+            type="button"
+            disabled={!selected.size || saving}
+            className="btn btn-primary"
+            onClick={handleConfirm}
+          >
+            {saving ? '...' : `إضافة${selected.size > 0 ? ` (${selected.size})` : ''}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Budget progress bar ───────────────────────────────────────────────────────
 function BudgetBar({ spent, budget }: { spent: number; budget?: number | null }) {
@@ -131,8 +228,7 @@ export default function BasketsPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [addingRuleTo, setAddingRuleTo] = useState<string | null>(null);
-  const [newMerchant, setNewMerchant] = useState({ name: '', matchType: 'contains' as typeof MATCH_TYPES[number] });
+  const [pickerGroupId, setPickerGroupId] = useState<string | null>(null);
   const [classifying, setClassifying] = useState(false);
 
   const load = useCallback(async () => {
@@ -169,17 +265,16 @@ export default function BasketsPage() {
     load();
   }
 
-  async function handleAddRule(groupId: string) {
-    if (!newMerchant.name.trim()) return;
-    try {
-      await merchantGroupsAPI.addRule(groupId, { merchant_name: newMerchant.name.trim(), match_type: newMerchant.matchType });
-      setNewMerchant({ name: '', matchType: 'contains' });
-      setAddingRuleTo(null);
-      toast.success('Merchant added');
-      load();
-    } catch {
-      toast.error('Merchant already exists in this basket');
+  async function handleAddRules(groupId: string, names: string[]) {
+    let added = 0;
+    for (const name of names) {
+      try {
+        await merchantGroupsAPI.addRule(groupId, { merchant_name: name, match_type: 'contains' });
+        added++;
+      } catch { /* skip duplicates */ }
     }
+    if (added > 0) toast.success(`تم إضافة ${added} تاجر`);
+    load();
   }
 
   async function handleRemoveRule(groupId: string, ruleId: string) {
@@ -405,10 +500,7 @@ export default function BasketsPage() {
                         <span className="basket-rules-title">{t('rules')}</span>
                         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                           <button
-                            onClick={() => {
-                              setAddingRuleTo(addingRuleTo === group.id ? null : group.id);
-                              setExpandedId(group.id);
-                            }}
+                            onClick={() => { setPickerGroupId(group.id); setExpandedId(group.id); }}
                             className="basket-rules-add-btn"
                           >
                             <Plus size={12} /> {t('addRule')}
@@ -423,31 +515,12 @@ export default function BasketsPage() {
                         </div>
                       </div>
 
-                      {addingRuleTo === group.id && (
-                        <div className="basket-rule-add-row">
-                          <input
-                            value={newMerchant.name}
-                            onChange={e => setNewMerchant(p => ({ ...p, name: e.target.value }))}
-                            placeholder={t('merchantName')}
-                            className="form-input"
-                            style={{ flex: 1 }}
-                            onKeyDown={e => e.key === 'Enter' && handleAddRule(group.id)}
-                            autoFocus
-                          />
-                          <select
-                            value={newMerchant.matchType}
-                            onChange={e => setNewMerchant(p => ({ ...p, matchType: e.target.value as typeof MATCH_TYPES[number] }))}
-                            className="form-input"
-                            style={{ width: 120 }}
-                          >
-                            {MATCH_TYPES.map(m => (
-                              <option key={m} value={m}>{t(`match_${m}`)}</option>
-                            ))}
-                          </select>
-                          <button onClick={() => handleAddRule(group.id)} className="btn btn-primary" style={{ padding: '0 14px' }}>
-                            <Check size={14} />
-                          </button>
-                        </div>
+                      {pickerGroupId === group.id && (
+                        <MerchantPicker
+                          existingNames={group.rules.map(r => r.merchant_name)}
+                          onAdd={names => handleAddRules(group.id, names)}
+                          onClose={() => setPickerGroupId(null)}
+                        />
                       )}
 
                       {(expandedId === group.id || group.rules.length <= 4) && (
