@@ -10,19 +10,64 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RenameIndex(
-            model_name='bankpassword',
-            new_name='bank_passwo_user_id_6f2b16_idx',
-            old_name='bank_pass_user_idx',
+        migrations.RunSQL(
+            sql="""
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'bank_pass_user_idx') THEN
+                    ALTER INDEX bank_pass_user_idx RENAME TO bank_passwo_user_id_6f2b16_idx;
+                ELSIF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'bank_passwo_user_id_6f2b16_idx') THEN
+                    CREATE INDEX bank_passwo_user_id_6f2b16_idx ON api_bankpassword (user_id);
+                END IF;
+            END $$;
+            """,
+            reverse_sql="""
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'bank_passwo_user_id_6f2b16_idx') THEN
+                    ALTER INDEX bank_passwo_user_id_6f2b16_idx RENAME TO bank_pass_user_idx;
+                END IF;
+            END $$;
+            """,
         ),
-        migrations.RenameIndex(
-            model_name='statement',
-            new_name='statements_user_id_2b171c_idx',
-            old_name='statements_user_id_idx',
+        migrations.RunSQL(
+            sql="""
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'statements_user_id_idx') THEN
+                    ALTER INDEX statements_user_id_idx RENAME TO statements_user_id_2b171c_idx;
+                ELSIF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'statements_user_id_2b171c_idx') THEN
+                    CREATE INDEX statements_user_id_2b171c_idx ON api_statement (user_id);
+                END IF;
+            END $$;
+            """,
+            reverse_sql="""
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'statements_user_id_2b171c_idx') THEN
+                    ALTER INDEX statements_user_id_2b171c_idx RENAME TO statements_user_id_idx;
+                END IF;
+            END $$;
+            """,
         ),
-        migrations.RenameIndex(
-            model_name='statement',
-            new_name='statements_card_id_85c183_idx',
-            old_name='statements_card_id_idx',
+        migrations.RunSQL(
+            sql="""
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'statements_card_id_idx') THEN
+                    ALTER INDEX statements_card_id_idx RENAME TO statements_card_id_85c183_idx;
+                ELSIF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'statements_card_id_85c183_idx') THEN
+                    CREATE INDEX statements_card_id_85c183_idx ON api_statement (card_id);
+                END IF;
+            END $$;
+            """,
+            reverse_sql="""
+            DO $$
+            BEGIN
+                IF EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'statements_card_id_85c183_idx') THEN
+                    ALTER INDEX statements_card_id_85c183_idx RENAME TO statements_card_id_idx;
+                END IF;
+            END $$;
+            """,
         ),
     ]
