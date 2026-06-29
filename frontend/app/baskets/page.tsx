@@ -29,8 +29,16 @@ function MerchantPicker({
   onAdd: (names: string[]) => Promise<void>;
   onClose: () => void;
 }) {
+  const SESSION_KEY = 'merchant_arabic_names';
+
   const [merchants, setMerchants] = useState<Merchant[]>([]);
-  const [arabicNames, setArabicNames] = useState<Record<string, string>>({});
+  const [arabicNames, setArabicNames] = useState<Record<string, string>>(() => {
+    // Load from sessionStorage on first render
+    try {
+      const raw = typeof window !== 'undefined' ? sessionStorage.getItem(SESSION_KEY) : null;
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  });
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loadingMerchants, setLoadingMerchants] = useState(true);
@@ -41,23 +49,33 @@ function MerchantPicker({
     merchantsAPI.list().then(async d => {
       const items = d.items;
       setMerchants(items);
-      // Populate cached translations immediately
-      const cached: Record<string, string> = {};
-      items.forEach(m => { if (m.arabic_name) cached[m.merchant_name] = m.arabic_name; });
-      setArabicNames(cached);
+
+      // Merge DB-cached translations into state + sessionStorage
+      const merged: Record<string, string> = { ...arabicNames };
+      items.forEach(m => { if (m.arabic_name) merged[m.merchant_name] = m.arabic_name; });
+      setArabicNames(merged);
+      try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(merged)); } catch { /* quota */ }
       setLoadingMerchants(false);
 
-      // Translate any without Arabic names
-      const untranslated = items.filter(m => !m.arabic_name).map(m => m.merchant_name);
+      // Only translate names not already in sessionStorage
+      const untranslated = items
+        .filter(m => !merged[m.merchant_name])
+        .map(m => m.merchant_name);
+
       if (untranslated.length > 0) {
         setTranslating(true);
         try {
           const trans = await merchantsAPI.translate(untranslated);
-          setArabicNames(prev => ({ ...prev, ...trans }));
-        } catch { /* silent — show original names */ }
+          if (Object.keys(trans).length > 0) {
+            const updated = { ...merged, ...trans };
+            setArabicNames(updated);
+            try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(updated)); } catch { /* quota */ }
+          }
+        } catch { /* show English names on failure */ }
         finally { setTranslating(false); }
       }
     }).catch(() => setLoadingMerchants(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filtered = merchants.filter(m => {
@@ -122,9 +140,11 @@ function MerchantPicker({
               </span>
               <span className="merchant-picker-name">
                 <span className="merchant-picker-ar">
-                  {arabicNames[m.merchant_name] || (translating ? '...' : m.merchant_name)}
+                  {arabicNames[m.merchant_name] || m.merchant_name}
                 </span>
-                <span className="merchant-picker-en">{m.merchant_name}</span>
+                {arabicNames[m.merchant_name] && (
+                  <span className="merchant-picker-en">{m.merchant_name}</span>
+                )}
               </span>
               <span className="merchant-picker-count">{m.transaction_count} معاملة</span>
             </button>
