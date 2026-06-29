@@ -12,6 +12,7 @@ from .views import (
     bank_passwords_list, bank_passwords_save, bank_passwords_delete,
     statements_list, statement_transactions, statement_file,
     merchants_list,
+    MerchantGroupViewSet, cardholders_list,
 )
 
 router = DefaultRouter()
@@ -20,6 +21,7 @@ router.register(r'transactions', TransactionViewSet, basename='transaction')
 router.register(r'cash', CashEntryViewSet, basename='cash')
 router.register(r'chat/sessions', ChatSessionViewSet, basename='chatsession')
 router.register(r'chat/messages', ChatMessageViewSet, basename='chatmessage')
+router.register(r'merchant-groups', MerchantGroupViewSet, basename='merchantgroup')
 
 from django.http import JsonResponse
 
@@ -51,5 +53,6 @@ urlpatterns = [
     path('statements/<str:statement_id>/transactions/', statement_transactions, name='statement-transactions'),
     path('statements/<str:statement_id>/file/', statement_file, name='statement-file'),
     path('merchants/', merchants_list, name='merchants-list'),
+    path('cardholders/', cardholders_list, name='cardholders-list'),
     path('', include(router.urls)),
 ]

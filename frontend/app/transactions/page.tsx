@@ -421,11 +421,24 @@ export default function TransactionsPage() {
                               {txn.description}
                             </div>
                           )}
-                          {txn.category && (
-                            <span className="category-badge">
-                              {txn.category}
-                            </span>
-                          )}
+                          <div className="flex items-center gap-1 mt-1 flex-wrap">
+                            {txn.category && (
+                              <span className="category-badge">
+                                {txn.category}
+                              </span>
+                            )}
+                            {(txn as any).expense_type && (txn as any).expense_type !== 'unclassified' && (
+                              <span
+                                className="text-xs px-1.5 py-0.5 rounded-full font-medium"
+                                style={{
+                                  backgroundColor: (txn as any).expense_type === 'company' ? 'rgba(99,102,241,0.15)' : 'rgba(16,185,129,0.15)',
+                                  color: (txn as any).expense_type === 'company' ? '#818cf8' : '#34d399',
+                                }}
+                              >
+                                {(txn as any).expense_type === 'company' ? '🏢' : '👤'} {(txn as any).merchant_group_name ?? (txn as any).expense_type}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td>
                           {card ? (

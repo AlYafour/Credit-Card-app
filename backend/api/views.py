@@ -3134,3 +3134,179 @@ def realtime_session(request):
         )
     except Exception as exc:
         return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ─── Merchant Groups (Baskets) ────────────────────────────────────────────────
+
+class MerchantGroupViewSet(viewsets.ModelViewSet):
+    """CRUD for merchant groups (baskets) + nested rule management."""
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        from .models import MerchantGroup
+        return MerchantGroup.objects.filter(user=self.request.user).prefetch_related('rules')
+
+    def get_serializer_class(self):
+        from .serializers import MerchantGroupSerializer
+        return MerchantGroupSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    @action(detail=True, methods=['post'], url_path='rules')
+    def add_rule(self, request, pk=None):
+        """Add a merchant rule to this group."""
+        from .models import MerchantGroup, MerchantRule
+        from .serializers import MerchantRuleSerializer
+        group = self.get_object()
+        serializer = MerchantRuleSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save(group=group)
+            _classify_user_transactions(request.user)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['delete'], url_path='rules/(?P<rule_id>[^/.]+)')
+    def remove_rule(self, request, pk=None, rule_id=None):
+        """Remove a merchant rule from this group."""
+        from .models import MerchantRule
+        group = self.get_object()
+        try:
+            rule = group.rules.get(id=rule_id)
+        except MerchantRule.DoesNotExist:
+            return Response({'detail': 'Rule not found.'}, status=status.HTTP_404_NOT_FOUND)
+        rule.delete()
+        _classify_user_transactions(request.user)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=False, methods=['post'], url_path='classify')
+    def classify_all(self, request):
+        """Re-run auto-classification on ALL user transactions."""
+        updated = _classify_user_transactions(request.user)
+        return Response({'classified': updated})
+
+    @action(detail=False, methods=['get'], url_path='summary')
+    def summary(self, request):
+        """Spending summary grouped by basket + expense_type breakdown."""
+        from django.db.models import Sum, Count, Q
+        from .models import Transaction
+        from django.utils import timezone
+
+        now = timezone.now()
+        txns = Transaction.objects.filter(
+            user=request.user, is_deleted=False,
+            transaction_date__year=now.year,
+            transaction_date__month=now.month,
+        )
+        company_total = txns.filter(expense_type='company').aggregate(t=Sum('amount'))['t'] or 0
+        personal_total = txns.filter(expense_type='personal').aggregate(t=Sum('amount'))['t'] or 0
+        unclassified_total = txns.filter(expense_type='unclassified').aggregate(t=Sum('amount'))['t'] or 0
+
+        return Response({
+            'month': now.strftime('%Y-%m'),
+            'company': float(company_total),
+            'personal': float(personal_total),
+            'unclassified': float(unclassified_total),
+            'total': float(company_total + personal_total + unclassified_total),
+        })
+
+
+def _classify_user_transactions(user):
+    """
+    Auto-classify transactions based on MerchantRule patterns.
+    Returns the number of transactions updated.
+    """
+    from .models import MerchantRule, Transaction
+    rules = MerchantRule.objects.filter(group__user=user).select_related('group')
+    transactions = Transaction.objects.filter(user=user, is_deleted=False)
+    updated = 0
+
+    for txn in transactions:
+        if not txn.merchant_name:
+            continue
+        merchant_lower = txn.merchant_name.lower()
+        matched_group = None
+        for rule in rules:
+            name = rule.merchant_name.lower()
+            if rule.match_type == 'exact' and merchant_lower == name:
+                matched_group = rule.group
+                break
+            elif rule.match_type == 'contains' and name in merchant_lower:
+                matched_group = rule.group
+                break
+            elif rule.match_type == 'starts_with' and merchant_lower.startswith(name):
+                matched_group = rule.group
+                break
+
+        new_group = matched_group
+        new_expense_type = matched_group.group_type if matched_group else 'unclassified'
+        # Normalize mixed → unclassified for expense_type field
+        if new_expense_type == 'mixed':
+            new_expense_type = 'unclassified'
+
+        if txn.merchant_group != new_group or txn.expense_type != new_expense_type:
+            txn.merchant_group = new_group
+            txn.expense_type = new_expense_type
+            txn.save(update_fields=['merchant_group', 'expense_type'])
+            updated += 1
+
+    return updated
+
+
+# ─── Cardholders (supplementary card holders) ─────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def cardholders_list(request):
+    """
+    Return all supplementary/joint cards with spending analytics per cardholder.
+    """
+    from .models import Card, Transaction
+    from .services import encryption_service
+    from django.db.models import Sum, Count, Max
+    from django.utils import timezone
+
+    cards = Card.objects.filter(
+        user=request.user,
+        card_ownership__in=['supplementary', 'joint'],
+    )
+
+    now = timezone.now()
+    result = []
+    for card in cards:
+        # Decrypt cardholder name
+        try:
+            name = encryption_service.decrypt(card.cardholder_name_encrypted) if card.cardholder_name_encrypted else None
+        except Exception:
+            name = None
+
+        txns = Transaction.objects.filter(card=card, is_deleted=False)
+        monthly_txns = txns.filter(transaction_date__year=now.year, transaction_date__month=now.month)
+
+        total_spent = txns.aggregate(t=Sum('amount'))['t'] or 0
+        monthly_spent = monthly_txns.aggregate(t=Sum('amount'))['t'] or 0
+        txn_count = txns.count()
+        last_activity = txns.aggregate(d=Max('transaction_date'))['d']
+
+        company_spent = txns.filter(expense_type='company').aggregate(t=Sum('amount'))['t'] or 0
+        personal_spent = txns.filter(expense_type='personal').aggregate(t=Sum('amount'))['t'] or 0
+
+        result.append({
+            'card_id': str(card.id),
+            'card_name': card.card_name,
+            'card_last_four': card.card_last_four,
+            'bank_name': card.bank_name,
+            'card_ownership': card.card_ownership,
+            'cardholder_name': name,
+            'color_hex': card.color_hex,
+            'credit_limit': float(card.credit_limit) if card.credit_limit else None,
+            'total_spent': float(total_spent),
+            'monthly_spent': float(monthly_spent),
+            'company_spent': float(company_spent),
+            'personal_spent': float(personal_spent),
+            'transaction_count': txn_count,
+            'last_activity': last_activity.isoformat() if last_activity else None,
+        })
+
+    result.sort(key=lambda x: x['monthly_spent'], reverse=True)
+    return Response(result)

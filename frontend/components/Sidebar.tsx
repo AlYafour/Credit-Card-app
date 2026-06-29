@@ -16,6 +16,8 @@ import {
   BarChart3,
   History,
   Store,
+  ShoppingBasket,
+  Users,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslations } from '@/lib/i18n';
@@ -35,6 +37,8 @@ export default function Sidebar({ userEmail, onLogout }: SidebarProps) {
     { href: '/cards', label: t('navigation.cards'), icon: CreditCard, key: 'cards' },
     { href: '/transactions', label: t('navigation.transactions'), icon: Receipt, key: 'transactions' },
     { href: '/merchants', label: t('navigation.merchants' as any) || 'Merchants', icon: Store, key: 'merchants' },
+    { href: '/baskets', label: t('navigation.baskets' as any) || 'Baskets', icon: ShoppingBasket, key: 'baskets' },
+    { href: '/cardholders', label: t('navigation.cardholders' as any) || 'Cardholders', icon: Users, key: 'cardholders' },
     { href: '/sms-parser', label: t('navigation.addTransaction'), icon: Upload, key: 'addTransaction' },
     { href: '/statement', label: t('navigation.statement') || 'كشف الحساب', icon: FileText, key: 'statement' },
     { href: '/reports', label: t('navigation.reports'), icon: BarChart3, key: 'reports' },

@@ -2,7 +2,7 @@ import re
 import logging
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Card, Transaction, CashEntry, ChatSession, ChatMessage
+from .models import Card, Transaction, CashEntry, ChatSession, ChatMessage, MerchantGroup, MerchantRule
 from .services import encryption_service, detect_card_network, extract_last_four
 
 logger = logging.getLogger(__name__)
@@ -245,23 +245,29 @@ class CardUpdateSerializer(serializers.ModelSerializer):
 
 class TransactionSerializer(serializers.ModelSerializer):
     card_id = serializers.UUIDField(required=False, allow_null=True)
+    merchant_group_id = serializers.UUIDField(required=False, allow_null=True, write_only=True)
     card_name = serializers.SerializerMethodField()
     card_last_four = serializers.SerializerMethodField()
+    merchant_group_name = serializers.SerializerMethodField()
     
     class Meta:
         model = Transaction
         fields = [
             'id', 'card', 'card_id', 'card_name', 'card_last_four', 'transaction_type', 'amount', 'currency',
             'merchant_name', 'description', 'category', 'transaction_date',
-            'source', 'created_at', 'updated_at'
+            'source', 'expense_type', 'merchant_group', 'merchant_group_id', 'merchant_group_name',
+            'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'card', 'card_name', 'card_last_four', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'card', 'card_name', 'card_last_four', 'merchant_group', 'merchant_group_name', 'created_at', 'updated_at']
     
     def get_card_name(self, obj):
         return obj.card.card_name if obj.card else None
-    
+
     def get_card_last_four(self, obj):
         return obj.card.card_last_four if obj.card else None
+
+    def get_merchant_group_name(self, obj):
+        return obj.merchant_group.name if obj.merchant_group else None
     
     def to_representation(self, instance):
         """Ensure card_id is included in response"""
@@ -347,3 +353,46 @@ class ChatMessageSerializer(serializers.ModelSerializer):
             'tokens_used', 'created_at'
         ]
         read_only_fields = ['id', 'created_at']
+
+
+class MerchantRuleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MerchantRule
+        fields = ['id', 'merchant_name', 'match_type', 'created_at']
+        read_only_fields = ['id', 'created_at']
+
+
+class MerchantGroupSerializer(serializers.ModelSerializer):
+    rules = MerchantRuleSerializer(many=True, read_only=True)
+    transaction_count = serializers.SerializerMethodField()
+    total_spent = serializers.SerializerMethodField()
+    monthly_spent = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MerchantGroup
+        fields = [
+            'id', 'name', 'group_type', 'color', 'icon',
+            'monthly_budget', 'rules',
+            'transaction_count', 'total_spent', 'monthly_spent',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def get_transaction_count(self, obj):
+        return obj.transactions.filter(is_deleted=False).count()
+
+    def get_total_spent(self, obj):
+        from django.db.models import Sum
+        result = obj.transactions.filter(is_deleted=False).aggregate(total=Sum('amount'))
+        return float(result['total'] or 0)
+
+    def get_monthly_spent(self, obj):
+        from django.db.models import Sum
+        from django.utils import timezone
+        now = timezone.now()
+        result = obj.transactions.filter(
+            is_deleted=False,
+            transaction_date__year=now.year,
+            transaction_date__month=now.month,
+        ).aggregate(total=Sum('amount'))
+        return float(result['total'] or 0)

@@ -148,6 +148,60 @@ class Card(models.Model):
         indexes = [models.Index(fields=['user_id'])]
 
 
+class MerchantGroup(models.Model):
+    """A named basket/category that groups merchants together."""
+    GROUP_TYPES = [
+        ('company', 'Company'),
+        ('personal', 'Personal'),
+        ('mixed', 'Mixed'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='merchant_groups')
+    name = models.CharField(max_length=100)
+    group_type = models.CharField(max_length=20, choices=GROUP_TYPES, default='mixed')
+    color = models.CharField(max_length=7, default='#6366f1')
+    icon = models.CharField(max_length=50, null=True, blank=True)
+    monthly_budget = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    is_deleted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = ActiveManager()
+    all_objects = AllObjectsManager()
+
+    class Meta:
+        db_table = 'merchant_groups'
+        ordering = ['name']
+        indexes = [models.Index(fields=['user_id'], name='merchant_group_user_idx')]
+
+    def __str__(self):
+        return f'{self.name} ({self.group_type})'
+
+
+class MerchantRule(models.Model):
+    """Maps a merchant name pattern to a MerchantGroup for auto-classification."""
+    MATCH_TYPES = [
+        ('exact', 'Exact Match'),
+        ('contains', 'Contains'),
+        ('starts_with', 'Starts With'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    group = models.ForeignKey(MerchantGroup, on_delete=models.CASCADE, related_name='rules')
+    merchant_name = models.CharField(max_length=255)
+    match_type = models.CharField(max_length=20, choices=MATCH_TYPES, default='contains')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'merchant_rules'
+        unique_together = [('group', 'merchant_name')]
+        indexes = [models.Index(fields=['merchant_name'], name='merchant_rule_name_idx')]
+
+    def __str__(self):
+        return f'{self.merchant_name} → {self.group.name}'
+
+
 class Transaction(models.Model):
     TRANSACTION_TYPES = [
         # legacy lowercase (existing data)
@@ -193,6 +247,17 @@ class Transaction(models.Model):
     transaction_date = models.DateTimeField()
     source = models.CharField(max_length=50, default='manual')
     statement = models.ForeignKey('Statement', on_delete=models.SET_NULL, null=True, blank=True, related_name='transactions')
+    # Enterprise classification
+    EXPENSE_TYPES = [
+        ('company', 'Company'),
+        ('personal', 'Personal'),
+        ('unclassified', 'Unclassified'),
+    ]
+    expense_type = models.CharField(max_length=20, choices=EXPENSE_TYPES, default='unclassified')
+    merchant_group = models.ForeignKey(
+        'MerchantGroup', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='transactions'
+    )
     is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
