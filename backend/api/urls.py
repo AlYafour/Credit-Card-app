@@ -13,6 +13,7 @@ from .views import (
     statements_list, statement_transactions, statement_file,
     merchants_list,
     MerchantGroupViewSet, cardholders_list,
+    transactions_export_excel, transactions_import_excel,
 )
 
 router = DefaultRouter()
@@ -54,5 +55,7 @@ urlpatterns = [
     path('statements/<str:statement_id>/file/', statement_file, name='statement-file'),
     path('merchants/', merchants_list, name='merchants-list'),
     path('cardholders/', cardholders_list, name='cardholders-list'),
+    path('transactions/export/', transactions_export_excel, name='transactions-export'),
+    path('transactions/import/', transactions_import_excel, name='transactions-import'),
     path('', include(router.urls)),
 ]

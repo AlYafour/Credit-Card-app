@@ -2493,15 +2493,42 @@ tr:hover {
    RTL – اتجاه واحد فقط (مصدر واحد)
    ============================================ */
 
-/* تعيين الاتجاه من عنصر html فقط */
-html[dir="rtl"],
-html[dir="rtl"] * {
-  direction: rtl !important;
+/* Set direction on html + block-level containers only; let tables inherit properly */
+html[dir="rtl"] {
+  direction: rtl;
+}
+html[dir="rtl"] body,
+html[dir="rtl"] main,
+html[dir="rtl"] div,
+html[dir="rtl"] section,
+html[dir="rtl"] article,
+html[dir="rtl"] aside,
+html[dir="rtl"] nav,
+html[dir="rtl"] header,
+html[dir="rtl"] footer,
+html[dir="rtl"] form,
+html[dir="rtl"] ul,
+html[dir="rtl"] ol,
+html[dir="rtl"] li,
+html[dir="rtl"] p,
+html[dir="rtl"] h1,
+html[dir="rtl"] h2,
+html[dir="rtl"] h3,
+html[dir="rtl"] h4,
+html[dir="rtl"] h5,
+html[dir="rtl"] h6,
+html[dir="rtl"] label,
+html[dir="rtl"] button,
+html[dir="rtl"] a,
+html[dir="rtl"] span,
+html[dir="rtl"] input,
+html[dir="rtl"] textarea,
+html[dir="rtl"] select {
+  direction: rtl;
 }
 
-html[dir="ltr"],
-html[dir="ltr"] * {
-  direction: ltr !important;
+html[dir="ltr"] {
+  direction: ltr;
 }
 
 /* Override for specific elements that should not inherit */
@@ -2715,6 +2742,344 @@ html[dir="rtl"] .credit-card-error {
 [dir="rtl"] .language-menu {
   right: auto;
   left: 0;
+}
+
+/* ============================================================
+   TRANSACTIONS PAGE — FILTER BAR, TABLE, IMPORT MODAL
+   ============================================================ */
+
+/* ── Summary Row ── */
+.txn-summary-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+.txn-summary-card {
+  background: var(--card-bg, rgba(255,255,255,0.05));
+  border: 1px solid var(--border, rgba(255,255,255,0.1));
+  border-radius: 12px;
+  padding: 16px 20px;
+}
+.txn-summary-label {
+  font-size: 12px;
+  color: var(--text-muted, #94a3b8);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+.txn-summary-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+  font-variant-numeric: tabular-nums;
+}
+.txn-summary-value.positive { color: #34d399; }
+.txn-summary-value.negative { color: #f87171; }
+
+/* ── Filter Bar ── */
+.filter-bar {
+  background: var(--card-bg, rgba(255,255,255,0.03));
+  border: 1px solid var(--border, rgba(255,255,255,0.08));
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.filter-bar-top {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.filter-quick-group {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.filter-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-top: auto;
+}
+.filter-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 160px;
+  flex: 1;
+}
+.filter-item-wide { flex: 2; min-width: 200px; }
+.filter-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted, #94a3b8);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.filter-input {
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border, rgba(255,255,255,0.1));
+  background: var(--input-bg, rgba(255,255,255,0.05));
+  color: var(--text-primary, #f1f5f9);
+  padding: 0 10px;
+  font-size: 13px;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.filter-input:focus { border-color: var(--accent, #6366f1); }
+.filter-select {
+  height: 36px;
+  border-radius: 8px;
+  border: 1px solid var(--border, rgba(255,255,255,0.1));
+  background: var(--input-bg, rgba(255,255,255,0.05));
+  color: var(--text-primary, #f1f5f9);
+  padding: 0 10px;
+  font-size: 13px;
+  width: 100%;
+  outline: none;
+  cursor: pointer;
+}
+.filter-search-wrap { position: relative; }
+.filter-clear-btn {
+  position: absolute;
+  inset-inline-end: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  display: flex;
+  padding: 2px;
+}
+.filter-toggle-btn { position: relative; }
+.filter-badge {
+  position: absolute;
+  top: -6px;
+  inset-inline-end: -6px;
+  background: #6366f1;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 999px;
+  min-width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 3px;
+}
+.filter-advanced-panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border, rgba(255,255,255,0.07));
+}
+
+/* ── Transaction Table ── */
+.txn-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.txn-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.txn-table .col-check  { width: 44px;  min-width: 44px; }
+.txn-table .col-date   { width: 130px; min-width: 110px; }
+.txn-table .col-type   { width: 160px; min-width: 130px; }
+.txn-table .col-merchant { min-width: 180px; }
+.txn-table .col-card   { width: 180px; min-width: 140px; }
+.txn-table .col-amount { width: 120px; min-width: 100px; }
+.txn-table .col-actions { width: 60px;  min-width: 52px; }
+
+.txn-date-cell { display: flex; flex-direction: column; gap: 1px; }
+.txn-date { font-size: 13px; color: var(--text-primary, #f1f5f9); font-weight: 500; }
+.txn-time { font-size: 11px; color: var(--text-muted, #94a3b8); }
+
+.txn-type-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+.txn-merchant-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary, #f1f5f9);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+.txn-merchant-desc {
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.txn-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 3px;
+}
+.expense-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+.expense-type-badge[data-expense="company"] {
+  background: rgba(99,102,241,0.15);
+  color: #818cf8;
+}
+.expense-type-badge[data-expense="personal"] {
+  background: rgba(16,185,129,0.15);
+  color: #34d399;
+}
+.txn-card-cell {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+}
+.txn-card-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-primary, #f1f5f9);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.txn-card-num {
+  font-size: 11px;
+  color: var(--text-muted, #94a3b8);
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Import Modal ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal-box {
+  background: var(--card-bg-solid, #1e293b);
+  border: 1px solid var(--border, rgba(255,255,255,0.12));
+  border-radius: 16px;
+  padding: 24px;
+  max-width: 480px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: 0 24px 48px rgba(0,0,0,0.4);
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.modal-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary, #f1f5f9);
+  margin: 0;
+}
+.modal-close {
+  background: none;
+  border: none;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+}
+.modal-close:hover { color: var(--text-primary, #f1f5f9); }
+.modal-desc {
+  font-size: 13px;
+  color: var(--text-muted, #94a3b8);
+  line-height: 1.6;
+  margin: 0;
+}
+.import-dropzone {
+  border: 2px dashed var(--border, rgba(255,255,255,0.15));
+  border-radius: 12px;
+  padding: 32px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  text-align: center;
+}
+.import-dropzone:hover,
+.import-dropzone.has-file {
+  border-color: #6366f1;
+  background: rgba(99,102,241,0.05);
+}
+.import-dropzone-icon { color: var(--text-muted, #94a3b8); }
+.import-dropzone.has-file .import-dropzone-icon { color: #6366f1; }
+.import-dropzone-text { font-size: 13px; color: var(--text-muted, #94a3b8); }
+.import-file-name { font-size: 14px; font-weight: 600; color: #6366f1; }
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ── RTL fixes for the new components ── */
+[dir="rtl"] .filter-bar-top { flex-direction: row-reverse; }
+[dir="rtl"] .filter-quick-group { flex-direction: row-reverse; }
+[dir="rtl"] .filter-advanced-panel { flex-direction: row-reverse; }
+[dir="rtl"] .txn-type-cell { flex-direction: row-reverse; }
+[dir="rtl"] .txn-card-cell { flex-direction: row-reverse; }
+[dir="rtl"] .txn-table { direction: rtl; }
+[dir="rtl"] .txn-table th,
+[dir="rtl"] .txn-table td { text-align: right; }
+[dir="rtl"] .txn-table .col-amount,
+[dir="rtl"] .txn-table th.text-right { text-align: left; }
+[dir="rtl"] .txn-table .col-actions { text-align: center; }
+[dir="rtl"] .page-header-actions { flex-direction: row-reverse; }
+[dir="rtl"] .txn-summary-row { direction: rtl; }
+[dir="rtl"] .modal-header { flex-direction: row-reverse; }
+[dir="rtl"] .modal-actions { flex-direction: row-reverse; }
+[dir="rtl"] .import-dropzone { direction: rtl; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .txn-summary-row { grid-template-columns: 1fr; }
+  .filter-quick-group { flex-direction: column; }
+  .filter-advanced-panel { flex-direction: column; }
+  .txn-table .col-card { display: none; }
+  .txn-table .col-type { width: 100px; }
 }
 
 /* RTL: Credit card reveal button */

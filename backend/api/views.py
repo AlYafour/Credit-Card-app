@@ -1653,9 +1653,25 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
         merchant_name = self.request.query_params.get('merchant_name')
         if merchant_name:
-            queryset = queryset.filter(merchant_name=merchant_name)
+            queryset = queryset.filter(merchant_name__icontains=merchant_name)
 
-        return queryset.order_by('-transaction_date')
+        expense_type = self.request.query_params.get('expense_type')
+        if expense_type:
+            queryset = queryset.filter(expense_type=expense_type)
+
+        amount_min = self.request.query_params.get('amount_min')
+        amount_max = self.request.query_params.get('amount_max')
+        if amount_min:
+            queryset = queryset.filter(amount__gte=amount_min)
+        if amount_max:
+            queryset = queryset.filter(amount__lte=amount_max)
+
+        sort = self.request.query_params.get('sort', '-transaction_date')
+        valid_sorts = {'transaction_date', '-transaction_date', 'amount', '-amount'}
+        if sort not in valid_sorts:
+            sort = '-transaction_date'
+
+        return queryset.order_by(sort)
     
     def list(self, request, *args, **kwargs):
         """List all transactions with pagination"""
@@ -3134,6 +3150,202 @@ def realtime_session(request):
         )
     except Exception as exc:
         return Response({'error': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ─── Excel Export / Import ───────────────────────────────────────────────────
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def transactions_export_excel(request):
+    """Export all (filtered) transactions as .xlsx"""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from .models import Transaction as TxnModel
+
+    qs = TxnModel.objects.filter(user=request.user, is_deleted=False).select_related('card', 'merchant_group').order_by('-transaction_date')
+
+    # Apply same filters as list view
+    card_id = request.GET.get('card_id')
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    txn_type = request.GET.get('transaction_type')
+    merchant = request.GET.get('merchant_name')
+    expense_type = request.GET.get('expense_type')
+
+    if card_id:
+        qs = qs.filter(card_id=card_id)
+    if start_date:
+        qs = qs.filter(transaction_date__date__gte=start_date)
+    if end_date:
+        qs = qs.filter(transaction_date__date__lte=end_date)
+    if txn_type:
+        qs = qs.filter(transaction_type=txn_type)
+    if merchant:
+        qs = qs.filter(merchant_name__icontains=merchant)
+    if expense_type:
+        qs = qs.filter(expense_type=expense_type)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Transactions'
+
+    header_fill = PatternFill(start_color='1E293B', end_color='1E293B', fill_type='solid')
+    header_font = Font(color='FFFFFF', bold=True, size=11)
+    center = Alignment(horizontal='center', vertical='center')
+
+    headers = ['Date', 'Type', 'Merchant', 'Description', 'Category', 'Amount', 'Currency', 'Card', 'Expense Type', 'Basket', 'Source']
+    col_widths = [20, 22, 28, 30, 18, 14, 10, 24, 16, 20, 12]
+
+    for i, (h, w) in enumerate(zip(headers, col_widths), 1):
+        cell = ws.cell(row=1, column=i, value=h)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center
+        ws.column_dimensions[chr(64 + i)].width = w
+
+    for row_num, txn in enumerate(qs, 2):
+        ws.append([
+            txn.transaction_date.strftime('%Y-%m-%d %H:%M') if txn.transaction_date else '',
+            txn.transaction_type,
+            txn.merchant_name or '',
+            txn.description or '',
+            txn.category or '',
+            float(txn.amount),
+            txn.currency,
+            f"{txn.card.card_name} ****{txn.card.card_last_four}" if txn.card else 'Cash',
+            txn.expense_type,
+            txn.merchant_group.name if txn.merchant_group else '',
+            txn.source,
+        ])
+
+    from io import BytesIO
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    response = HttpResponse(
+        buf.getvalue(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    response['Content-Disposition'] = 'attachment; filename="transactions.xlsx"'
+    return response
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def transactions_import_excel(request):
+    """Import transactions from .xlsx file"""
+    import openpyxl
+    from .models import Card as CardModel
+
+    file = request.FILES.get('file')
+    if not file:
+        return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        wb = openpyxl.load_workbook(file, data_only=True)
+        ws = wb.active
+    except Exception:
+        return Response({'error': 'Invalid Excel file'}, status=status.HTTP_400_BAD_REQUEST)
+
+    rows = list(ws.iter_rows(values_only=True))
+    if not rows:
+        return Response({'error': 'Empty file'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Normalize headers
+    raw_headers = [str(h).strip().lower() if h else '' for h in rows[0]]
+    HEADER_MAP = {
+        'date': 'date', 'transaction date': 'date', 'تاريخ': 'date',
+        'type': 'type', 'transaction type': 'type', 'النوع': 'type',
+        'merchant': 'merchant', 'merchant name': 'merchant', 'التاجر': 'merchant',
+        'description': 'description', 'الوصف': 'description',
+        'category': 'category', 'الفئة': 'category',
+        'amount': 'amount', 'المبلغ': 'amount',
+        'currency': 'currency', 'العملة': 'currency',
+        'card': 'card', 'البطاقة': 'card',
+        'expense type': 'expense_type', 'نوع المصروف': 'expense_type',
+    }
+    col_map = {}
+    for i, h in enumerate(raw_headers):
+        mapped = HEADER_MAP.get(h)
+        if mapped and mapped not in col_map:
+            col_map[mapped] = i
+
+    if 'amount' not in col_map:
+        return Response({'error': 'Missing required column: amount'}, status=status.HTTP_400_BAD_REQUEST)
+
+    cards = {c.card_last_four: c for c in CardModel.objects.filter(user=request.user)}
+    created, errors = 0, []
+
+    from django.utils.dateparse import parse_datetime, parse_date
+    from django.utils import timezone as tz
+    from decimal import Decimal, InvalidOperation
+
+    for row_idx, row in enumerate(rows[1:], 2):
+        def get(key):
+            idx = col_map.get(key)
+            return row[idx] if idx is not None and idx < len(row) else None
+
+        raw_amount = get('amount')
+        try:
+            amount = Decimal(str(raw_amount).replace(',', ''))
+            if amount <= 0:
+                raise ValueError
+        except (InvalidOperation, ValueError, TypeError):
+            errors.append(f'Row {row_idx}: invalid amount "{raw_amount}"')
+            continue
+
+        from datetime import datetime as _dt, time as _time, date as _date
+        raw_date = get('date')
+        txn_date = None
+        if raw_date:
+            if isinstance(raw_date, _dt):
+                txn_date = tz.make_aware(raw_date) if tz.is_naive(raw_date) else raw_date
+            elif isinstance(raw_date, _date):
+                txn_date = tz.make_aware(_dt.combine(raw_date, _time.min))
+            else:
+                parsed = parse_datetime(str(raw_date)) or parse_date(str(raw_date))
+                if parsed:
+                    if isinstance(parsed, _dt):
+                        txn_date = tz.make_aware(parsed) if tz.is_naive(parsed) else parsed
+                    else:
+                        txn_date = tz.make_aware(_dt.combine(parsed, _time.min))
+        if not txn_date:
+            txn_date = timezone.now()
+
+        # Map card by last four digits
+        card = None
+        raw_card = str(get('card') or '')
+        for last4, c in cards.items():
+            if last4 in raw_card:
+                card = c
+                break
+
+        raw_type = str(get('type') or 'PURCHASE').strip()
+        valid_types = {t[0] for t in Transaction.TRANSACTION_TYPES}
+        # try exact match first, then case-insensitive
+        if raw_type in valid_types:
+            txn_type = raw_type
+        else:
+            matched = next((v for v in valid_types if v.lower() == raw_type.lower()), None)
+            txn_type = matched if matched else 'PURCHASE'
+
+        from .models import Transaction as TxnModel
+        TxnModel.objects.create(
+            user=request.user,
+            card=card,
+            amount=amount,
+            currency=str(get('currency') or 'AED').upper()[:3],
+            transaction_type=txn_type,
+            merchant_name=str(get('merchant') or '')[:255] or None,
+            description=str(get('description') or '') or None,
+            category=str(get('category') or '') or None,
+            transaction_date=txn_date,
+            source='excel_import',
+        )
+        created += 1
+
+    return Response({'created': created, 'errors': errors, 'total_rows': len(rows) - 1})
 
 
 # ─── Merchant Groups (Baskets) ────────────────────────────────────────────────
