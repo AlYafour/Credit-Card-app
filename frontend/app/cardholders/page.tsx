@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations } from '@/lib/i18n';
 import { Users, Building2, User, CreditCard, Activity } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -19,7 +19,9 @@ function SpendBar({ company, personal, total }: { company: number; personal: num
   );
 }
 
-function CardholderCard({ ch, t }: { ch: Cardholder; t: ReturnType<typeof useTranslations> }) {
+type TFn = (key: string, params?: Record<string, string | number>) => string;
+
+function CardholderCard({ ch, t }: { ch: Cardholder; t: TFn }) {
   const router = useRouter();
   const initials = ch.cardholder_name
     ? ch.cardholder_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
@@ -102,7 +104,7 @@ function CardholderCard({ ch, t }: { ch: Cardholder; t: ReturnType<typeof useTra
 }
 
 export default function CardholdersPage() {
-  const t = useTranslations('cardholders');
+  const { t } = useTranslations('cardholders');
   const [cardholders, setCardholders] = useState<Cardholder[]>([]);
   const [loading, setLoading] = useState(true);
 

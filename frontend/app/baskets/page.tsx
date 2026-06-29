@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations } from '@/lib/i18n';
 import { useRouter } from 'next/navigation';
 import { Plus, Trash2, Edit2, Tag, TrendingUp, Building2, User, HelpCircle, X, Check, RefreshCw, ExternalLink, FileDown } from 'lucide-react';
 import { transactionsAPI } from '../api/transactions';
@@ -38,11 +38,13 @@ function BudgetBar({ spent, budget }: { spent: number; budget?: number | null })
   );
 }
 
+type TFn = (key: string, params?: Record<string, string | number>) => string;
+
 interface GroupFormProps {
   initial?: Partial<MerchantGroup>;
   onSave: (data: Partial<MerchantGroup>) => Promise<void>;
   onCancel: () => void;
-  t: ReturnType<typeof useTranslations>;
+  t: TFn;
 }
 
 function GroupForm({ initial, onSave, onCancel, t }: GroupFormProps) {
@@ -141,7 +143,7 @@ function GroupForm({ initial, onSave, onCancel, t }: GroupFormProps) {
 }
 
 export default function BasketsPage() {
-  const t = useTranslations('baskets');
+  const { t } = useTranslations('baskets');
   const router = useRouter();
   const [groups, setGroups] = useState<MerchantGroup[]>([]);
   const [loading, setLoading] = useState(true);
