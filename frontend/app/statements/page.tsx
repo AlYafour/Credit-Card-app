@@ -10,7 +10,7 @@ import CurrencySymbol from '@/components/ui/CurrencySymbol';
 import toast from 'react-hot-toast';
 import {
   FileText, ArrowLeft, Calendar, TrendingDown, TrendingUp,
-  ChevronDown, ChevronUp, RefreshCw, CheckCircle, Building2, Receipt,
+  ChevronDown, ChevronUp, RefreshCw, CheckCircle, Building2, Receipt, Eye,
 } from 'lucide-react';
 
 type Statement = Awaited<ReturnType<typeof cardsAPI.listStatements>>[number];
@@ -79,6 +79,7 @@ export default function StatementsHistoryPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [txns, setTxns] = useState<Record<string, StatementTxn[]>>({});
   const [loadingTxns, setLoadingTxns] = useState<string | null>(null);
+  const [loadingFile, setLoadingFile] = useState<string | null>(null);
 
   useEffect(() => {
     cardsAPI.listStatements()
@@ -86,6 +87,20 @@ export default function StatementsHistoryPage() {
       .catch(() => toast.error(ar ? 'فشل تحميل الكشوفات' : 'Failed to load statements'))
       .finally(() => setLoading(false));
   }, []);
+
+  const viewFile = async (id: string) => {
+    setLoadingFile(id);
+    try {
+      const blob = await cardsAPI.getStatementFile(id);
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch {
+      toast.error(ar ? 'فشل تحميل الملف' : 'Failed to load file');
+    } finally {
+      setLoadingFile(null);
+    }
+  };
 
   const toggleStatement = async (id: string) => {
     if (expandedId === id) { setExpandedId(null); return; }
@@ -260,6 +275,19 @@ export default function StatementsHistoryPage() {
                                   )}
                                 </p>
                               </div>
+                              {stmt.has_file && (
+                                <button
+                                  onClick={e => { e.stopPropagation(); viewFile(stmt.id); }}
+                                  disabled={loadingFile === stmt.id}
+                                  title={ar ? 'عرض الملف الأصلي' : 'View original file'}
+                                  style={{ background: 'none', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '3px 7px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, color: 'var(--primary)', fontSize: '0.72rem' }}
+                                >
+                                  {loadingFile === stmt.id
+                                    ? <RefreshCw size={13} style={{ animation: 'spin 1s linear infinite' }} />
+                                    : <Eye size={13} />}
+                                  <span>{ar ? 'الملف' : 'File'}</span>
+                                </button>
+                              )}
                               {isOpen ? <ChevronUp size={16} color="var(--text-secondary)" /> : <ChevronDown size={16} color="var(--text-secondary)" />}
                             </div>
                           </div>

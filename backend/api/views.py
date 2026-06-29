@@ -1296,6 +1296,9 @@ class CardViewSet(viewsets.ModelViewSet):
         card_info = request.data.get('card_info', {})
         transactions_data = request.data.get('transactions', [])
         card_id = request.data.get('card_id')
+        file_data_raw = request.data.get('file')
+        file_type_str = request.data.get('file_type', 'application/pdf')
+        file_name_str = request.data.get('file_name', 'statement.pdf')
 
         # Resolve card
         card = None
@@ -1412,6 +1415,32 @@ class CardViewSet(viewsets.ModelViewSet):
             currency=card_info.get('currency', 'AED'),
         )
 
+        # Save original uploaded file if provided
+        if file_data_raw:
+            import base64 as _b64
+            import os as _os
+            raw = file_data_raw
+            if ',' in raw:
+                _, raw = raw.split(',', 1)
+            try:
+                decoded_file = _b64.b64decode(raw)
+                ext_map = {
+                    'application/pdf': 'pdf', 'image/jpeg': 'jpg', 'image/jpg': 'jpg',
+                    'image/png': 'png', 'image/webp': 'webp',
+                }
+                ext = ext_map.get(file_type_str, 'pdf')
+                rel_path = f'statements/{stmt_obj.id}.{ext}'
+                abs_path = _os.path.join(django_settings.MEDIA_ROOT, rel_path)
+                _os.makedirs(_os.path.dirname(abs_path), exist_ok=True)
+                with open(abs_path, 'wb') as fh:
+                    fh.write(decoded_file)
+                stmt_obj.file_path = rel_path
+                stmt_obj.file_name = file_name_str
+                stmt_obj.file_type = file_type_str
+                stmt_obj.save(update_fields=['file_path', 'file_name', 'file_type'])
+            except Exception as fe:
+                logger.warning('Statement import: failed to save file: %s', str(fe))
+
         # Bulk create transactions
         VALID_TYPES = {'purchase', 'payment', 'refund', 'withdrawal', 'transfer', 'deposit'}
         created_txns = 0
@@ -1508,6 +1537,8 @@ def statements_list(request):
             'imported_at': s.imported_at.isoformat(),
             'card_id': str(s.card.id) if s.card else None,
             'card_color': s.card.color_hex if s.card else None,
+            'has_file': bool(s.file_path),
+            'file_name': s.file_name,
         })
     return Response(result)
 
@@ -1533,6 +1564,34 @@ def statement_transactions(request, statement_id):
         'category': t.category,
     } for t in txns]
     return Response({'statement_id': statement_id, 'transactions': result, 'count': len(result)})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def statement_file(request, statement_id):
+    """Serve the original uploaded file for a statement."""
+    import os as _os
+    from django.http import FileResponse, Http404
+    from .models import Statement as _Statement
+
+    try:
+        stmt = _Statement.objects.get(id=statement_id, user=request.user)
+    except _Statement.DoesNotExist:
+        raise Http404
+
+    if not stmt.file_path:
+        raise Http404
+
+    abs_path = _os.path.join(django_settings.MEDIA_ROOT, stmt.file_path)
+    if not _os.path.exists(abs_path):
+        raise Http404
+
+    content_type = stmt.file_type or 'application/octet-stream'
+    fh = open(abs_path, 'rb')
+    response = FileResponse(fh, content_type=content_type)
+    safe_name = (stmt.file_name or 'statement').replace('"', '')
+    response['Content-Disposition'] = f'inline; filename="{safe_name}"'
+    return response
 
 
 @api_view(['GET'])
@@ -1591,6 +1650,10 @@ class TransactionViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(transaction_date__lte=end_date)
         if transaction_type:
             queryset = queryset.filter(transaction_type=transaction_type)
+
+        merchant_name = self.request.query_params.get('merchant_name')
+        if merchant_name:
+            queryset = queryset.filter(merchant_name=merchant_name)
 
         return queryset.order_by('-transaction_date')
     
@@ -1713,6 +1776,56 @@ class TransactionViewSet(viewsets.ModelViewSet):
             'net': float(total_income - total_spent),
             'currency': currency
         })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def merchants_list(request):
+    """Return unique merchants from purchase-type transactions only."""
+    from django.db.models import Count, Sum, Max
+    # Only transaction types that represent an actual merchant interaction
+    # Include both legacy lowercase and new uppercase variants
+    merchant_types = [
+        'purchase', 'refund',                            # legacy
+        'PURCHASE', 'REFUND', 'INSTALLMENT_PRINCIPAL',  # new
+        'QUASI_CASH', 'PREAUTH_HOLD',
+    ]
+    # Patterns that indicate a description/charge label, not a real merchant name
+    non_merchant_patterns = [
+        r'(?i)interest\s+charge',
+        r'(?i)finance\s+charge',
+        r'(?i)payment\s+by\s+customer',
+        r'(?i)minimum\s+payment',
+        r'(?i)full\s+payment',
+        r'(?i)annual\s+fee',
+        r'(?i)late\s+payment\s+fee',
+        r'(?i)over\s+limit\s+fee',
+        r'\(AED\s+[\d,]+',          # e.g. "(AED 1,900 for 31 days..."
+    ]
+    queryset = (
+        Transaction.objects.filter(
+            user=request.user,
+            merchant_name__isnull=False,
+            transaction_type__in=merchant_types,
+        )
+        .exclude(merchant_name='')
+        .exclude(merchant_name__iexact='purchase')
+        .exclude(merchant_name__iexact='refund')
+    )
+    for pattern in non_merchant_patterns:
+        queryset = queryset.exclude(merchant_name__iregex=pattern)
+
+    merchants = (
+        queryset
+        .values('merchant_name')
+        .annotate(
+            transaction_count=Count('id'),
+            total_amount=Sum('amount'),
+            last_transaction_date=Max('transaction_date'),
+        )
+        .order_by('-transaction_count')
+    )
+    return Response({'items': list(merchants)})
 
 
 class CashEntryViewSet(viewsets.ModelViewSet):

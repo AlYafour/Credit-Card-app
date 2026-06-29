@@ -9,6 +9,7 @@ export const transactionsAPI = {
     start_date?: string;
     end_date?: string;
     transaction_type?: string;
+    merchant_name?: string;
     page?: number;
     per_page?: number;
   }): Promise<ApiResponse<Transaction>> => {

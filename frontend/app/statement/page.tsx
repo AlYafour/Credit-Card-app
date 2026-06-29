@@ -202,19 +202,33 @@ export default function StatementPage() {
     setImporting(true);
     let totalCreated = 0, totalSkipped = 0, newCards = 0;
 
-    const byFile = new Map<number, { cardInfo: CardInfo; txns: ParsedTxn[]; cardId?: string }>();
+    const byFile = new Map<number, { cardInfo: CardInfo; txns: ParsedTxn[]; cardId?: string; fileBase64?: string; fileType?: string; fileName?: string }>();
     for (const txn of selected) {
       const fi = txn._fileIndex ?? 0;
       if (!byFile.has(fi)) {
         const fe = files[fi];
-        byFile.set(fi, { cardInfo: fe?.cardInfo || {}, txns: [], cardId: fe?.selectedCardId || fe?.matchedCardId });
+        byFile.set(fi, {
+          cardInfo: fe?.cardInfo || {},
+          txns: [],
+          cardId: fe?.selectedCardId || fe?.matchedCardId,
+          fileBase64: fe?.base64,
+          fileType: fe?.file.type,
+          fileName: fe?.file.name,
+        });
       }
       byFile.get(fi)!.txns.push(txn);
     }
 
-    for (const { cardInfo, txns, cardId } of Array.from(byFile.values())) {
+    for (const { cardInfo, txns, cardId, fileBase64, fileType, fileName } of Array.from(byFile.values())) {
       try {
-        const r = await cardsAPI.importStatement({ card_info: cardInfo as Record<string, unknown>, transactions: txns as unknown as Array<Record<string, unknown>>, card_id: cardId });
+        const r = await cardsAPI.importStatement({
+          card_info: cardInfo as Record<string, unknown>,
+          transactions: txns as unknown as Array<Record<string, unknown>>,
+          card_id: cardId,
+          file: fileBase64,
+          file_type: fileType,
+          file_name: fileName,
+        });
         totalCreated += r.transactions_created;
         totalSkipped += r.transactions_skipped;
         if (r.card_created) newCards++;

@@ -150,12 +150,35 @@ class Card(models.Model):
 
 class Transaction(models.Model):
     TRANSACTION_TYPES = [
+        # legacy lowercase (existing data)
         ('purchase', 'Purchase'),
         ('withdrawal', 'Withdrawal'),
         ('payment', 'Payment'),
         ('refund', 'Refund'),
         ('transfer', 'Transfer'),
         ('deposit', 'Deposit'),
+        # new types
+        ('PURCHASE', 'Purchase'),
+        ('REFUND', 'Refund (Merchant)'),
+        ('REVERSAL', 'Reversal / Void'),
+        ('CARD_PAYMENT', 'Card Payment'),
+        ('CASH_WITHDRAWAL', 'Cash Withdrawal (ATM)'),
+        ('CASH_ADVANCE', 'Cash Advance'),
+        ('TRANSFER', 'Transfer'),
+        ('WALLET_TOPUP', 'Wallet Top-Up'),
+        ('BALANCE_TRANSFER', 'Balance Transfer'),
+        ('INSTALLMENT_PRINCIPAL', 'Installment / BNPL'),
+        ('BANK_FEE', 'Bank Fee'),
+        ('FINANCE_CHARGE', 'Finance Charge / Interest'),
+        ('FOREIGN_EXCHANGE_FEE', 'Foreign Exchange Fee'),
+        ('CASHBACK', 'Cashback'),
+        ('REWARD_CREDIT', 'Reward / Miles Credit'),
+        ('CHARGEBACK', 'Chargeback'),
+        ('ADJUSTMENT', 'Adjustment'),
+        ('PREAUTH_HOLD', 'Pre-Auth Hold'),
+        ('PREAUTH_RELEASE', 'Pre-Auth Release'),
+        ('QUASI_CASH', 'Quasi-Cash'),
+        ('UNKNOWN', 'Unknown'),
     ]
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -207,6 +230,9 @@ class Statement(models.Model):
     transactions_imported = models.IntegerField(default=0)
     transactions_skipped = models.IntegerField(default=0)
     imported_at = models.DateTimeField(auto_now_add=True)
+    file_path = models.CharField(max_length=500, null=True, blank=True)
+    file_name = models.CharField(max_length=255, null=True, blank=True)
+    file_type = models.CharField(max_length=100, null=True, blank=True)
 
     class Meta:
         db_table = 'statements'

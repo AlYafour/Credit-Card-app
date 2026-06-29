@@ -249,14 +249,52 @@ export default function TransactionsPage() {
                 onChange={setTransactionType}
                 options={[
                   t('transactions.allTypes'),
-                  t('transactions.purchase'),
-                  t('transactions.withdrawal'),
-                  t('transactions.payment'),
-                  t('transactions.refund'),
-                  t('transactions.transfer'),
-                  t('transactions.deposit'),
+                  t('transactions.PURCHASE'),
+                  t('transactions.REFUND'),
+                  t('transactions.REVERSAL'),
+                  t('transactions.CARD_PAYMENT'),
+                  t('transactions.CASH_WITHDRAWAL'),
+                  t('transactions.CASH_ADVANCE'),
+                  t('transactions.TRANSFER'),
+                  t('transactions.WALLET_TOPUP'),
+                  t('transactions.BALANCE_TRANSFER'),
+                  t('transactions.INSTALLMENT_PRINCIPAL'),
+                  t('transactions.BANK_FEE'),
+                  t('transactions.FINANCE_CHARGE'),
+                  t('transactions.FOREIGN_EXCHANGE_FEE'),
+                  t('transactions.CASHBACK'),
+                  t('transactions.REWARD_CREDIT'),
+                  t('transactions.CHARGEBACK'),
+                  t('transactions.ADJUSTMENT'),
+                  t('transactions.PREAUTH_HOLD'),
+                  t('transactions.PREAUTH_RELEASE'),
+                  t('transactions.QUASI_CASH'),
+                  t('transactions.UNKNOWN'),
                 ]}
-                optionValues={['all', 'purchase', 'withdrawal', 'payment', 'refund', 'transfer', 'deposit']}
+                optionValues={[
+                  'all',
+                  'purchase',           // legacy DB value
+                  'refund',             // legacy DB value
+                  'REVERSAL',
+                  'payment',            // legacy DB value for CARD_PAYMENT
+                  'withdrawal',         // legacy DB value for CASH_WITHDRAWAL
+                  'CASH_ADVANCE',
+                  'transfer',           // legacy DB value
+                  'WALLET_TOPUP',
+                  'BALANCE_TRANSFER',
+                  'INSTALLMENT_PRINCIPAL',
+                  'BANK_FEE',
+                  'FINANCE_CHARGE',
+                  'FOREIGN_EXCHANGE_FEE',
+                  'CASHBACK',
+                  'REWARD_CREDIT',
+                  'CHARGEBACK',
+                  'ADJUSTMENT',
+                  'PREAUTH_HOLD',
+                  'PREAUTH_RELEASE',
+                  'QUASI_CASH',
+                  'UNKNOWN',
+                ]}
                 placeholder={t('common.search')}
                 noMatchesText={t('common.noMatches')}
                 aria-label={t('transactions.filterByType')}

@@ -128,8 +128,14 @@ export const cardsAPI = {
     payment_due_full_date: string | null; payment_due_day: number | null; minimum_payment: number | null;
     currency: string; transactions_imported: number; transactions_skipped: number;
     imported_at: string; card_id: string | null; card_color: string | null;
+    has_file: boolean; file_name: string | null;
   }>> => {
     const response = await api.get('/statements/');
+    return response.data;
+  },
+
+  getStatementFile: async (statementId: string): Promise<Blob> => {
+    const response = await api.get(`/statements/${statementId}/file/`, { responseType: 'blob' });
     return response.data;
   },
 
@@ -198,12 +204,16 @@ export const cardsAPI = {
     card_info: Record<string, unknown>;
     transactions: Array<Record<string, unknown>>;
     card_id?: string;
+    file?: string;
+    file_type?: string;
+    file_name?: string;
   }): Promise<{
     card: unknown;
     card_created: boolean;
     transactions_created: number;
     transactions_skipped: number;
     total_transactions: number;
+    statement_id: string;
   }> => {
     const response = await api.post('/cards/import-statement', data);
     return response.data;
