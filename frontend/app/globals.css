@@ -2978,7 +2978,7 @@ html[dir="rtl"] .credit-card-error {
   font-weight: 600;
   transition: background 0.15s;
 }
-.basket-rules-add-btn:hover { background: var(--primary-subtle, rgba(107,44,145,0.08)); }
+.basket-rules-add-btn:hover { background: var(--primary-bg); }
 .basket-rule-add-row {
   display: flex;
   gap: var(--space-2);
@@ -3036,22 +3036,28 @@ html[dir="rtl"] .credit-card-error {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 8px;
+  padding: 10px 8px;
   border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-secondary);
+  border: 2px solid var(--border);
+  background: var(--card-bg, var(--bg));
+  color: var(--text);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
+  user-select: none;
 }
-.basket-type-btn:hover { border-color: var(--primary); color: var(--primary); }
+.basket-type-btn:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-bg);
+}
 .basket-type-btn.active {
   border-color: var(--primary);
-  background: var(--primary-subtle, rgba(107,44,145,0.1));
+  background: var(--primary-bg);
   color: var(--primary);
-  font-weight: 600;
+  font-weight: 700;
+  box-shadow: 0 0 0 1px var(--primary);
 }
 .basket-color-row {
   display: flex;

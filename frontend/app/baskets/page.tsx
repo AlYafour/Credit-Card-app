@@ -14,16 +14,9 @@ import { merchantGroupsAPI, MerchantGroup } from '../api/merchant-groups';
 import { transactionsAPI } from '../api/transactions';
 
 const COLORS = ['#6b2c91','#10b981','#f59e0b','#ef4444','#3b82f6','#8b5cf6','#ec4899','#14b8a6'];
-const GROUP_TYPES = ['company', 'personal', 'mixed'] as const;
 const MATCH_TYPES = ['contains', 'exact', 'starts_with'] as const;
 
 type TFn = (key: string, params?: Record<string, string | number>) => string;
-
-function typeIcon(type: string, size = 14) {
-  if (type === 'company') return <Building2 size={size} />;
-  if (type === 'personal') return <User size={size} />;
-  return <HelpCircle size={size} />;
-}
 
 // ── Budget progress bar ───────────────────────────────────────────────────────
 function BudgetBar({ spent, budget }: { spent: number; budget?: number | null }) {
@@ -62,7 +55,6 @@ function BasketForm({
   t: TFn;
 }) {
   const [name, setName] = useState(initial?.name ?? '');
-  const [groupType, setGroupType] = useState<typeof GROUP_TYPES[number]>(initial?.group_type ?? 'mixed');
   const [color, setColor] = useState(initial?.color ?? COLORS[0]);
   const [budget, setBudget] = useState(initial?.monthly_budget?.toString() ?? '');
   const [saving, setSaving] = useState(false);
@@ -72,7 +64,7 @@ function BasketForm({
     if (!name.trim()) return;
     setSaving(true);
     try {
-      await onSave({ name: name.trim(), group_type: groupType, color, monthly_budget: budget ? parseFloat(budget) : null });
+      await onSave({ name: name.trim(), group_type: 'mixed', color, monthly_budget: budget ? parseFloat(budget) : null });
     } finally {
       setSaving(false);
     }
@@ -89,23 +81,6 @@ function BasketForm({
           placeholder={t('basketNamePlaceholder')}
           autoFocus
         />
-      </div>
-
-      <div className="form-group">
-        <label className="form-label">{t('basketType')}</label>
-        <div className="basket-type-row">
-          {GROUP_TYPES.map(type => (
-            <button
-              key={type}
-              type="button"
-              onClick={() => setGroupType(type)}
-              className={`basket-type-btn ${groupType === type ? 'active' : ''}`}
-            >
-              {typeIcon(type)}
-              {t(`type_${type}`)}
-            </button>
-          ))}
-        </div>
       </div>
 
       <div className="form-group">
@@ -347,10 +322,6 @@ export default function BasketsPage() {
                       <div className="basket-card-title">
                         <span className="basket-color-dot-sm" style={{ background: group.color }} />
                         <span className="basket-name">{group.name}</span>
-                        <span className="basket-type-chip" style={{ background: `${group.color}18`, color: group.color }}>
-                          {typeIcon(group.group_type, 12)}
-                          {t(`type_${group.group_type}`)}
-                        </span>
                       </div>
                       <div className="basket-card-actions">
                         <button
