@@ -449,6 +449,11 @@ export default function CardsPage() {
                                       />
                                     </div>
                                     <span className="bank-card-credit-pct">{Math.round(usedPct)}%</span>
+                                    {usedPct > 80 && (
+                                      <span className="card-utilization-warning" title="High credit utilization — consider paying down this card">
+                                        ⚠ High
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="bank-card-credit-nums">
                                     <span className="bank-card-available-num">

@@ -14,6 +14,7 @@ from .views import (
     merchants_list,
     MerchantGroupViewSet, cardholders_list,
     transactions_export_excel, transactions_import_excel,
+    ProjectViewSet, AuditLogViewSet,
 )
 
 router = DefaultRouter()
@@ -23,6 +24,8 @@ router.register(r'cash', CashEntryViewSet, basename='cash')
 router.register(r'chat/sessions', ChatSessionViewSet, basename='chatsession')
 router.register(r'chat/messages', ChatMessageViewSet, basename='chatmessage')
 router.register(r'merchant-groups', MerchantGroupViewSet, basename='merchantgroup')
+router.register(r'projects', ProjectViewSet, basename='project')
+router.register(r'audit-logs', AuditLogViewSet, basename='auditlog')
 
 from django.http import JsonResponse
 

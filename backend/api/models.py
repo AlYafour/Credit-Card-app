@@ -202,16 +202,32 @@ class MerchantRule(models.Model):
         return f'{self.merchant_name} → {self.group.name}'
 
 
+class Project(models.Model):
+    """Cost centre / project for tagging transactions (e.g. Building A, Oil Field 3)."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='projects')
+    name = models.CharField(max_length=255)
+    color = models.CharField(max_length=7, default='#6366f1')
+    description = models.TextField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+    is_deleted = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    objects = ActiveManager()
+    all_objects = AllObjectsManager()
+
+    class Meta:
+        db_table = 'projects'
+        ordering = ['name']
+        indexes = [models.Index(fields=['user_id'], name='project_user_idx')]
+
+    def __str__(self):
+        return self.name
+
+
 class Transaction(models.Model):
     TRANSACTION_TYPES = [
-        # legacy lowercase (existing data)
-        ('purchase', 'Purchase'),
-        ('withdrawal', 'Withdrawal'),
-        ('payment', 'Payment'),
-        ('refund', 'Refund'),
-        ('transfer', 'Transfer'),
-        ('deposit', 'Deposit'),
-        # new types
         ('PURCHASE', 'Purchase'),
         ('REFUND', 'Refund (Merchant)'),
         ('REVERSAL', 'Reversal / Void'),
@@ -256,6 +272,26 @@ class Transaction(models.Model):
     expense_type = models.CharField(max_length=20, choices=EXPENSE_TYPES, default='unclassified')
     merchant_group = models.ForeignKey(
         'MerchantGroup', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='transactions'
+    )
+    # Enterprise fields
+    vat_amount = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
+    is_vat_inclusive = models.BooleanField(default=False)
+    receipt_file = models.FileField(upload_to='receipts/', null=True, blank=True)
+    APPROVAL_STATUSES = [
+        ('draft', 'Draft'),
+        ('submitted', 'Submitted for Approval'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+    approval_status = models.CharField(max_length=20, choices=APPROVAL_STATUSES, default='draft')
+    approved_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='approved_transactions'
+    )
+    approval_note = models.TextField(null=True, blank=True)
+    project = models.ForeignKey(
+        'Project', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='transactions'
     )
     is_deleted = models.BooleanField(default=False)
@@ -404,3 +440,40 @@ class WebAuthnCredential(models.Model):
 
     def __str__(self):
         return f'{self.user.email} - {self.device_name or self.credential_id[:20]}'
+
+
+class AuditLog(models.Model):
+    """Immutable record of every important data mutation."""
+    ACTIONS = [
+        ('CREATE', 'Create'),
+        ('UPDATE', 'Update'),
+        ('DELETE', 'Delete'),
+        ('RESTORE', 'Restore'),
+        ('APPROVE', 'Approve'),
+        ('REJECT', 'Reject'),
+        ('SUBMIT', 'Submit'),
+        ('LOGIN', 'Login'),
+        ('EXPORT', 'Export'),
+        ('IMPORT', 'Import'),
+    ]
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='audit_logs')
+    action = models.CharField(max_length=20, choices=ACTIONS)
+    model_name = models.CharField(max_length=50)
+    object_id = models.CharField(max_length=100, null=True, blank=True)
+    object_repr = models.CharField(max_length=255, null=True, blank=True)
+    changes = models.JSONField(null=True, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'audit_logs'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user_id'], name='audit_user_idx'),
+            models.Index(fields=['model_name'], name='audit_model_idx'),
+            models.Index(fields=['created_at'], name='audit_date_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.action} {self.model_name} by {self.user}'

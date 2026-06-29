@@ -14,10 +14,12 @@ from django.db.models import Sum, Q, Count
 from django.http import HttpResponse
 from django.utils import timezone
 from datetime import datetime, timedelta
-from .models import Card, Transaction, CashEntry, ChatSession, ChatMessage, WebAuthnCredential, BankPassword, PasswordResetToken
+from rest_framework.pagination import PageNumberPagination
+from .models import Card, Transaction, CashEntry, ChatSession, ChatMessage, WebAuthnCredential, BankPassword, PasswordResetToken, MerchantGroup, Project, AuditLog
 from .serializers import (
     UserSerializer, RegisterSerializer, CardSerializer, CardUpdateSerializer,
-    TransactionSerializer, CashEntrySerializer, ChatSessionSerializer, ChatMessageSerializer
+    TransactionSerializer, CashEntrySerializer, ChatSessionSerializer, ChatMessageSerializer,
+    ProjectSerializer, AuditLogSerializer,
 )
 from .services import encryption_service, parse_card_text, update_card_balance
 from .sms_parser import SMSParserEngine
@@ -25,6 +27,46 @@ from .sms_parser import SMSParserEngine
 
 class LoginRateThrottle(AnonRateThrottle):
     rate = '5/minute'
+
+
+class TransactionPagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = 'per_page'
+    max_page_size = 200
+
+    def get_paginated_response(self, data):
+        return Response({
+            'items': data,
+            'total': self.page.paginator.count,
+            'page': self.page.number,
+            'per_page': self.get_page_size(self.request),
+            'total_pages': self.page.paginator.num_pages,
+            'next': self.get_next_link(),
+            'previous': self.get_previous_link(),
+        })
+
+
+def _get_client_ip(request):
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        return x_forwarded_for.split(',')[0].strip()
+    return request.META.get('REMOTE_ADDR')
+
+
+def audit_log(request, action, model_name, object_id=None, object_repr=None, changes=None):
+    """Write an immutable audit entry. Never raises — audit failures must not break the request."""
+    try:
+        AuditLog.objects.create(
+            user=request.user if request.user.is_authenticated else None,
+            action=action,
+            model_name=model_name,
+            object_id=str(object_id) if object_id else None,
+            object_repr=object_repr,
+            changes=changes,
+            ip_address=_get_client_ip(request),
+        )
+    except Exception:
+        pass
 
 
 # Account lockout constants
@@ -1630,11 +1672,14 @@ def bank_passwords_delete(request, bank_name):
 class TransactionViewSet(viewsets.ModelViewSet):
     serializer_class = TransactionSerializer
     permission_classes = [IsAuthenticated]
-    
+    pagination_class = TransactionPagination
+
     def get_queryset(self):
-        queryset = Transaction.objects.filter(
-            user=self.request.user
-        ).select_related('card')
+        include_deleted = self.request.query_params.get('include_deleted') == 'true'
+        if include_deleted:
+            queryset = Transaction.all_objects.filter(user=self.request.user).select_related('card', 'project')
+        else:
+            queryset = Transaction.objects.filter(user=self.request.user).select_related('card', 'project')
 
         card_id = self.request.query_params.get('card_id')
         if card_id:
@@ -1670,21 +1715,29 @@ class TransactionViewSet(viewsets.ModelViewSet):
         if amount_max:
             queryset = queryset.filter(amount__lte=amount_max)
 
+        project_id = self.request.query_params.get('project_id')
+        if project_id:
+            queryset = queryset.filter(project_id=project_id)
+
+        approval_status = self.request.query_params.get('approval_status')
+        if approval_status:
+            queryset = queryset.filter(approval_status=approval_status)
+
         sort = self.request.query_params.get('sort', '-transaction_date')
         valid_sorts = {'transaction_date', '-transaction_date', 'amount', '-amount'}
         if sort not in valid_sorts:
             sort = '-transaction_date'
 
         return queryset.order_by(sort)
-    
+
     def list(self, request, *args, **kwargs):
-        """List all transactions with pagination"""
         queryset = self.get_queryset()
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
         serializer = self.get_serializer(queryset, many=True)
-        return Response({
-            'items': serializer.data,
-            'total': queryset.count()
-        })
+        return Response({'items': serializer.data, 'total': queryset.count()})
     
     def perform_create(self, serializer):
         """Create transaction and update card balance"""
@@ -1754,13 +1807,86 @@ class TransactionViewSet(viewsets.ModelViewSet):
         card = instance.card
         instance.is_deleted = True
         instance.save()
-        
+        audit_log(request, 'DELETE', 'Transaction', object_id=instance.id, object_repr=str(instance.merchant_name))
+
         # Recalculate card balance after deletion
         if card:
             update_card_balance(card)
-        
+
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
+
+    @action(detail=True, methods=['post'], url_path='submit-approval')
+    def submit_approval(self, request, pk=None):
+        txn = self.get_object()
+        if txn.approval_status not in ('draft', 'rejected'):
+            return Response({'detail': 'Already submitted or approved.'}, status=status.HTTP_400_BAD_REQUEST)
+        txn.approval_status = 'submitted'
+        txn.save(update_fields=['approval_status'])
+        audit_log(request, 'SUBMIT', 'Transaction', object_id=txn.id, object_repr=str(txn.merchant_name))
+        return Response(TransactionSerializer(txn, context={'request': request}).data)
+
+    @action(detail=True, methods=['post'], url_path='approve')
+    def approve(self, request, pk=None):
+        txn = self.get_object()
+        if txn.approval_status != 'submitted':
+            return Response({'detail': 'Transaction must be submitted first.'}, status=status.HTTP_400_BAD_REQUEST)
+        txn.approval_status = 'approved'
+        txn.approved_by = request.user
+        txn.approval_note = request.data.get('note', '')
+        txn.save(update_fields=['approval_status', 'approved_by', 'approval_note'])
+        audit_log(request, 'APPROVE', 'Transaction', object_id=txn.id, object_repr=str(txn.merchant_name))
+        return Response(TransactionSerializer(txn, context={'request': request}).data)
+
+    @action(detail=True, methods=['post'], url_path='reject')
+    def reject(self, request, pk=None):
+        txn = self.get_object()
+        if txn.approval_status != 'submitted':
+            return Response({'detail': 'Transaction must be submitted first.'}, status=status.HTTP_400_BAD_REQUEST)
+        txn.approval_status = 'rejected'
+        txn.approval_note = request.data.get('note', '')
+        txn.save(update_fields=['approval_status', 'approval_note'])
+        audit_log(request, 'REJECT', 'Transaction', object_id=txn.id, object_repr=str(txn.merchant_name))
+        return Response(TransactionSerializer(txn, context={'request': request}).data)
+
+    @action(detail=True, methods=['post'], url_path='upload-receipt')
+    def upload_receipt(self, request, pk=None):
+        txn = self.get_object()
+        receipt = request.FILES.get('receipt')
+        if not receipt:
+            return Response({'detail': 'No file provided.'}, status=status.HTTP_400_BAD_REQUEST)
+        allowed = {'image/jpeg', 'image/png', 'image/webp', 'application/pdf'}
+        if receipt.content_type not in allowed:
+            return Response({'detail': 'Only JPEG, PNG, WebP, or PDF files are allowed.'}, status=status.HTTP_400_BAD_REQUEST)
+        if receipt.size > 10 * 1024 * 1024:
+            return Response({'detail': 'File must be under 10 MB.'}, status=status.HTTP_400_BAD_REQUEST)
+        if txn.receipt_file:
+            txn.receipt_file.delete(save=False)
+        txn.receipt_file = receipt
+        txn.save(update_fields=['receipt_file'])
+        return Response({'receipt_url': request.build_absolute_uri(txn.receipt_file.url)})
+
+    @action(detail=True, methods=['delete'], url_path='delete-receipt')
+    def delete_receipt(self, request, pk=None):
+        txn = self.get_object()
+        if txn.receipt_file:
+            txn.receipt_file.delete(save=False)
+            txn.receipt_file = None
+            txn.save(update_fields=['receipt_file'])
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['post'], url_path='restore')
+    def restore(self, request, pk=None):
+        try:
+            txn = Transaction.all_objects.get(id=pk, user=request.user)
+        except Transaction.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        if not txn.is_deleted:
+            return Response({'detail': 'Transaction is not deleted.'}, status=status.HTTP_400_BAD_REQUEST)
+        txn.is_deleted = False
+        txn.save(update_fields=['is_deleted'])
+        audit_log(request, 'RESTORE', 'Transaction', object_id=txn.id, object_repr=str(txn.merchant_name))
+        return Response(TransactionSerializer(txn, context={'request': request}).data)
+
     @action(detail=False, methods=['get'], url_path='summary/monthly')
     def monthly_summary(self, request):
         year = int(request.query_params.get('year', timezone.now().year))
@@ -1778,8 +1904,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
             transaction_date__lt=end_date,
         )
         
-        expenses = transactions.filter(transaction_type__in=['purchase', 'withdrawal', 'payment'])
-        income = transactions.filter(transaction_type__in=['refund', 'transfer'])
+        expenses = transactions.filter(transaction_type__in=['PURCHASE', 'CASH_WITHDRAWAL', 'CARD_PAYMENT', 'CASH_ADVANCE'])
+        income = transactions.filter(transaction_type__in=['REFUND', 'CASHBACK', 'REWARD_CREDIT', 'REVERSAL'])
         
         total_spent = expenses.aggregate(Sum('amount'))['amount__sum'] or 0
         total_income = income.aggregate(Sum('amount'))['amount__sum'] or 0
@@ -3529,3 +3655,49 @@ def cardholders_list(request):
 
     result.sort(key=lambda x: x['monthly_spent'], reverse=True)
     return Response(result)
+
+
+# ── Projects ──────────────────────────────────────────────────────────────────
+
+class ProjectViewSet(viewsets.ModelViewSet):
+    serializer_class = ProjectSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Project.objects.filter(user=self.request.user)
+
+    def perform_create(self, serializer):
+        project = serializer.save(user=self.request.user)
+        audit_log(self.request, 'CREATE', 'Project', object_id=project.id, object_repr=project.name)
+
+    def perform_update(self, serializer):
+        project = serializer.save()
+        audit_log(self.request, 'UPDATE', 'Project', object_id=project.id, object_repr=project.name)
+
+    def destroy(self, request, pk=None):
+        try:
+            project = Project.objects.get(id=pk, user=request.user)
+        except Project.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        project.is_deleted = True
+        project.save(update_fields=['is_deleted'])
+        audit_log(request, 'DELETE', 'Project', object_id=project.id, object_repr=project.name)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# ── Audit Log ─────────────────────────────────────────────────────────────────
+
+class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = AuditLogSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        qs = AuditLog.objects.filter(user=self.request.user).order_by('-created_at')
+        model_name = self.request.query_params.get('model_name')
+        if model_name:
+            qs = qs.filter(model_name__iexact=model_name)
+        action = self.request.query_params.get('action')
+        if action:
+            qs = qs.filter(action=action.upper())
+        return qs[:500]
+

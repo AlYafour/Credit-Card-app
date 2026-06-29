@@ -9644,3 +9644,148 @@ html[dir="rtl"] .credit-card-error {
   .realtime-modal { max-width: 100%; border-radius: 16px 16px 0 0; }
   .realtime-overlay { align-items: flex-end; padding: 0; }
 }
+
+/* ========== Transaction Page: Pagination & Enterprise Badges ========== */
+
+.txn-table-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  font-size: 13px;
+  color: var(--text-secondary, #64748b);
+  border-bottom: 1px solid var(--border-color, rgba(0,0,0,0.08));
+  gap: 12px;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pagination-controls.pagination-bottom {
+  justify-content: center;
+  padding: 12px 16px;
+  border-top: 1px solid var(--border-color, rgba(0,0,0,0.08));
+}
+
+.pagination-info {
+  font-size: 13px;
+  color: var(--text-secondary, #64748b);
+  min-width: 60px;
+  text-align: center;
+}
+
+/* Deleted (recycle bin) rows */
+.table-row-deleted td {
+  opacity: 0.5;
+  text-decoration: line-through;
+  text-decoration-color: var(--text-muted, #94a3b8);
+}
+
+.table-row-deleted .txn-badges { text-decoration: none !important; }
+.table-row-deleted .txn-badges * { text-decoration: none !important; }
+
+/* Project badge */
+.project-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  background: rgba(99, 102, 241, 0.12);
+  color: #6366f1;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  white-space: nowrap;
+}
+
+[data-theme="dark"] .project-badge {
+  background: rgba(99, 102, 241, 0.18);
+  color: #a5b4fc;
+  border-color: rgba(99, 102, 241, 0.3);
+}
+
+/* Approval status badges */
+.approval-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.approval-badge-draft {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--text-secondary, #64748b);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.approval-badge-submitted {
+  background: rgba(59, 130, 246, 0.1);
+  color: #3b82f6;
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.approval-badge-approved {
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.approval-badge-rejected {
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+[data-theme="dark"] .approval-badge-approved { color: #4ade80; background: rgba(34,197,94,0.12); }
+[data-theme="dark"] .approval-badge-rejected { color: #f87171; background: rgba(239,68,68,0.12); }
+[data-theme="dark"] .approval-badge-submitted { color: #60a5fa; background: rgba(59,130,246,0.12); }
+
+/* Receipt link */
+.receipt-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: #3b82f6;
+  text-decoration: none;
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.08);
+  transition: background 0.15s;
+}
+
+.receipt-link:hover {
+  background: rgba(59, 130, 246, 0.18);
+  text-decoration: none;
+}
+
+[data-theme="dark"] .receipt-link { color: #60a5fa; background: rgba(59,130,246,0.12); }
+
+/* Credit utilization warning badge */
+.card-utilization-warning {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: #dc2626;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 8px;
+  padding: 1px 5px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+[data-theme="dark"] .card-utilization-warning {
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+}

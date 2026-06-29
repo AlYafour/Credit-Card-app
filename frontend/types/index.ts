@@ -81,6 +81,10 @@ export interface Card {
   card_benefits?: string;
   issue_date?: string;
   classification?: string;
+  points_earn_rate?: number;
+  points_value_fils?: number;
+  utilization_percentage?: number | null;
+  total_points_earned?: number;
   created_at: string;
   updated_at: string;
   // Revealed fields (only when reveal=true)
@@ -132,7 +136,17 @@ export interface CardUpdateRequest {
 }
 
 // ========== Transaction Types ==========
-export type TransactionType = 'purchase' | 'withdrawal' | 'payment' | 'refund' | 'transfer' | 'deposit';
+export type TransactionType =
+  | 'PURCHASE' | 'REFUND' | 'REVERSAL' | 'CARD_PAYMENT'
+  | 'CASH_WITHDRAWAL' | 'CASH_ADVANCE' | 'TRANSFER' | 'WALLET_TOPUP'
+  | 'BALANCE_TRANSFER' | 'INSTALLMENT_PRINCIPAL' | 'BANK_FEE'
+  | 'FINANCE_CHARGE' | 'FOREIGN_EXCHANGE_FEE' | 'CASHBACK'
+  | 'REWARD_CREDIT' | 'CHARGEBACK' | 'ADJUSTMENT'
+  | 'PREAUTH_HOLD' | 'PREAUTH_RELEASE' | 'QUASI_CASH' | 'UNKNOWN'
+  | string;
+
+export type ApprovalStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
+export type ExpenseType = 'company' | 'personal' | 'unclassified';
 
 export interface Transaction {
   id: string;
@@ -147,8 +161,51 @@ export interface Transaction {
   category?: string;
   transaction_date: string;
   source: string;
+  expense_type?: ExpenseType;
+  merchant_group?: string;
+  merchant_group_id?: string;
+  merchant_group_name?: string;
+  vat_amount?: number | null;
+  is_vat_inclusive?: boolean;
+  receipt_url?: string | null;
+  approval_status?: ApprovalStatus;
+  approved_by?: string | null;
+  approved_by_name?: string | null;
+  approval_note?: string | null;
+  project?: string | null;
+  project_id?: string | null;
+  project_name?: string | null;
+  is_deleted?: boolean;
   created_at: string;
   updated_at: string;
+}
+
+// ========== Project Types ==========
+export interface Project {
+  id: string;
+  name: string;
+  color: string;
+  description?: string;
+  is_active: boolean;
+  transaction_count: number;
+  total_spent: number;
+  monthly_spent: number;
+  created_at: string;
+  updated_at: string;
+}
+
+// ========== Audit Log Types ==========
+export interface AuditLog {
+  id: string;
+  user?: string;
+  user_email?: string;
+  action: string;
+  model_name: string;
+  object_id?: string;
+  object_repr?: string;
+  changes?: Record<string, unknown> | null;
+  ip_address?: string;
+  created_at: string;
 }
 
 export interface TransactionCreateRequest {

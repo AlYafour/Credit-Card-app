@@ -223,6 +223,17 @@ export default function SeedCardsPage() {
   const [started, setStarted] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
+  // Block in production — dev-only tool
+  useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') {
+      router.replace('/dashboard');
+    }
+  }, [router]);
+
+  if (process.env.NODE_ENV !== 'development') {
+    return null;
+  }
+
   // تحميل حالة المستخدم عند فتح الصفحة
   useEffect(() => {
     const checkAuth = async () => {

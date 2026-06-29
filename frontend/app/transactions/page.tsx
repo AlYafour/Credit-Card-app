@@ -32,6 +32,13 @@ import {
   Building2,
   User,
   SlidersHorizontal,
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
+  Paperclip,
+  Clock,
+  CheckCircle,
+  XCircle,
 } from 'lucide-react';
 import BulkActions from '@/components/BulkActions';
 import LoadingState from '@/components/ui/LoadingState';
@@ -165,6 +172,16 @@ export default function TransactionsPage() {
   const [sort, setSort] = useState('-transaction_date');
   const [showFilters, setShowFilters] = useState(!!urlBasketId);
 
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+
+  // Recycle bin + approval
+  const [includeDeleted, setIncludeDeleted] = useState(false);
+  const [projectId, setProjectId] = useState('');
+  const [approvalStatus, setApprovalStatus] = useState('all');
+
   // Selection & delete
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
@@ -183,6 +200,9 @@ export default function TransactionsPage() {
     amountMin,
     amountMax,
     sort !== '-transaction_date',
+    projectId,
+    approvalStatus !== 'all',
+    includeDeleted,
   ].filter(Boolean).length;
 
   useEffect(() => {
@@ -204,13 +224,20 @@ export default function TransactionsPage() {
           merchant_name: merchantSearch || undefined,
           expense_type: expenseType !== 'all' ? expenseType : undefined,
           merchant_group_id: basketId || undefined,
+          project_id: projectId || undefined,
+          approval_status: approvalStatus !== 'all' ? approvalStatus : undefined,
           amount_min: amountMin ? Number(amountMin) : undefined,
           amount_max: amountMax ? Number(amountMax) : undefined,
           sort,
-        }).then(r => r.items || []),
+          page,
+          per_page: 50,
+          include_deleted: includeDeleted || undefined,
+        }),
       ]);
       setCards(cardsRes);
-      setTransactions(txnsRes);
+      setTransactions(txnsRes.items || []);
+      setTotalPages(txnsRes.total_pages || 1);
+      setTotalItems(txnsRes.total || 0);
     } catch (err: any) {
       setError(err?.response?.data?.message || t('errors.generic'));
       setTransactions([]);
@@ -218,7 +245,7 @@ export default function TransactionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, selectedCard, transactionType, startDate, endDate, merchantSearch, expenseType, basketId, amountMin, amountMax, sort, t]);
+  }, [isAuthenticated, selectedCard, transactionType, startDate, endDate, merchantSearch, expenseType, basketId, projectId, approvalStatus, amountMin, amountMax, sort, page, includeDeleted, t]);
 
   useEffect(() => {
     if (isAuthenticated) loadData();
@@ -232,9 +259,13 @@ export default function TransactionsPage() {
     setMerchantSearch('');
     setExpenseType('all');
     setBasketId('');
+    setProjectId('');
+    setApprovalStatus('all');
     setAmountMin('');
     setAmountMax('');
     setSort('-transaction_date');
+    setIncludeDeleted(false);
+    setPage(1);
   };
 
   const handleExport = () => {
@@ -316,13 +347,18 @@ export default function TransactionsPage() {
 
   if (!isAuthenticated) return null;
 
+  const EXPENSE_TYPES_SET = new Set(['PURCHASE', 'CASH_WITHDRAWAL', 'CARD_PAYMENT', 'CASH_ADVANCE', 'BANK_FEE', 'FINANCE_CHARGE', 'FOREIGN_EXCHANGE_FEE']);
+  const INCOME_TYPES_SET = new Set(['REFUND', 'CASHBACK', 'REWARD_CREDIT', 'REVERSAL', 'CHARGEBACK']);
+
   const totalAmount = transactions.reduce((s, txn) => {
-    const isExp = ['purchase', 'withdrawal', 'payment'].includes(txn.transaction_type);
-    return s + (isExp ? -Number(txn.amount) : Number(txn.amount));
+    const upper = txn.transaction_type.toUpperCase();
+    if (EXPENSE_TYPES_SET.has(upper)) return s - Number(txn.amount);
+    if (INCOME_TYPES_SET.has(upper)) return s + Number(txn.amount);
+    return s;
   }, 0);
 
   const totalExpenses = transactions
-    .filter(txn => ['purchase', 'withdrawal', 'payment'].includes(txn.transaction_type))
+    .filter(txn => EXPENSE_TYPES_SET.has(txn.transaction_type.toUpperCase()))
     .reduce((s, t) => s + Number(t.amount), 0);
 
   return (
@@ -559,6 +595,36 @@ export default function TransactionsPage() {
                   <option value="amount">{t('transactions.sortLowest')}</option>
                 </select>
               </div>
+
+              {/* Approval Status */}
+              <div className="filter-item">
+                <label className="filter-label">
+                  <CheckCircle size={13} />
+                  {t('transactions.approvalStatus') || 'Approval Status'}
+                </label>
+                <select className="filter-select" value={approvalStatus} onChange={e => setApprovalStatus(e.target.value)}>
+                  <option value="all">All</option>
+                  <option value="draft">Draft</option>
+                  <option value="submitted">Submitted</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                </select>
+              </div>
+
+              {/* Recycle Bin toggle */}
+              <div className="filter-item">
+                <label className="filter-label">
+                  <RotateCcw size={13} />
+                  {t('transactions.recycleBin') || 'Show Deleted'}
+                </label>
+                <button
+                  className={`btn ${includeDeleted ? 'btn-primary' : 'btn-ghost'}`}
+                  style={{ width: '100%' }}
+                  onClick={() => { setIncludeDeleted(!includeDeleted); setPage(1); }}
+                >
+                  {includeDeleted ? '✓ Showing deleted' : 'Show deleted'}
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -592,7 +658,25 @@ export default function TransactionsPage() {
           </div>
         ) : (
           <div className="card card-table">
-            <div className="txn-table-wrap">
+            <div className="txn-table-meta">
+              <span className="txn-table-count">{totalItems} {t('transactions.title') || 'transactions'}</span>
+              {totalPages > 1 && (
+                <div className="pagination-controls">
+                  <button
+                    className="btn-icon"
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                  ><ChevronLeft size={16} /></button>
+                  <span className="pagination-info">{page} / {totalPages}</span>
+                  <button
+                    className="btn-icon"
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages}
+                  ><ChevronRight size={16} /></button>
+                </div>
+              )}
+            </div>
+            <div className="txn-table-wrap" style={{ overflowX: 'auto' }}>
               <table className="txn-table">
                 <thead>
                   <tr>
@@ -615,12 +699,14 @@ export default function TransactionsPage() {
                 <tbody>
                   {transactions.map(txn => {
                     const card = cards.find(c => c.id === txn.card_id);
-                    const isExpense = ['purchase', 'withdrawal', 'payment'].includes(txn.transaction_type);
+                    const upper = txn.transaction_type.toUpperCase();
+                    const isExpense = EXPENSE_TYPES_SET.has(upper);
                     const isSelected = selectedTransactions.has(txn.id);
-                    const expType = (txn as any).expense_type;
-                    const groupName = (txn as any).merchant_group_name;
+                    const expType = txn.expense_type;
+                    const groupName = txn.merchant_group_name;
+                    const approvalBadge = txn.approval_status && txn.approval_status !== 'draft' ? txn.approval_status : null;
                     return (
-                      <tr key={txn.id} className={isSelected ? 'table-row-selected' : ''}>
+                      <tr key={txn.id} className={`${isSelected ? 'table-row-selected' : ''} ${txn.is_deleted ? 'table-row-deleted' : ''}`}>
                         <td className="col-check">
                           <button onClick={() => handleToggleSelect(txn.id)} className="table-checkbox-btn">
                             {isSelected ? <CheckSquare size={18} /> : <Square size={18} />}
@@ -654,13 +740,27 @@ export default function TransactionsPage() {
                               <span className="category-badge">{txn.category}</span>
                             )}
                             {expType && expType !== 'unclassified' && (
-                              <span
-                                className="expense-type-badge"
-                                data-expense={expType}
-                              >
+                              <span className="expense-type-badge" data-expense={expType}>
                                 {expType === 'company' ? <Building2 size={10} /> : <User size={10} />}
                                 {groupName || t(`transactions.${expType}`)}
                               </span>
+                            )}
+                            {txn.project_name && (
+                              <span className="project-badge">
+                                <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--primary)', display: 'inline-block', marginRight: 3 }} />
+                                {txn.project_name}
+                              </span>
+                            )}
+                            {approvalBadge && (
+                              <span className={`approval-badge approval-badge-${approvalBadge}`}>
+                                {approvalBadge === 'approved' ? <CheckCircle size={10} /> : approvalBadge === 'rejected' ? <XCircle size={10} /> : <Clock size={10} />}
+                                {approvalBadge}
+                              </span>
+                            )}
+                            {txn.receipt_url && (
+                              <a href={txn.receipt_url} target="_blank" rel="noopener noreferrer" className="receipt-link" title="View receipt">
+                                <Paperclip size={10} />
+                              </a>
                             )}
                           </div>
                         </td>
@@ -682,13 +782,30 @@ export default function TransactionsPage() {
                           </span>
                         </td>
                         <td className="col-actions text-center">
-                          <button
-                            onClick={() => handleDelete(txn.id)}
-                            className="btn-icon btn-icon-danger"
-                            title={t('common.delete')}
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {txn.is_deleted ? (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  await transactionsAPI.restore(txn.id);
+                                  await loadData();
+                                  toast.success('Restored');
+                                } catch { toast.error(t('errors.generic')); }
+                              }}
+                              className="btn-icon"
+                              title="Restore"
+                              style={{ color: 'var(--success)' }}
+                            >
+                              <RotateCcw size={16} />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleDelete(txn.id)}
+                              className="btn-icon btn-icon-danger"
+                              title={t('common.delete')}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                         </td>
                       </tr>
                     );
@@ -696,6 +813,21 @@ export default function TransactionsPage() {
                 </tbody>
               </table>
             </div>
+            {totalPages > 1 && (
+              <div className="pagination-controls pagination-bottom">
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                ><ChevronLeft size={16} /> Prev</button>
+                <span className="pagination-info">{page} of {totalPages}</span>
+                <button
+                  className="btn btn-ghost"
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                >Next <ChevronRight size={16} /></button>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -3,6 +3,16 @@ import type { Transaction, TransactionCreateRequest, ApiResponse, MonthlySummary
 
 export type { Transaction };
 
+export interface PaginatedTransactions {
+  items: Transaction[];
+  total: number;
+  page: number;
+  per_page: number;
+  total_pages: number;
+  next: string | null;
+  previous: string | null;
+}
+
 export const transactionsAPI = {
   list: async (params?: {
     card_id?: string;
@@ -12,13 +22,53 @@ export const transactionsAPI = {
     merchant_name?: string;
     expense_type?: string;
     merchant_group_id?: string;
+    project_id?: string;
+    approval_status?: string;
     amount_min?: number;
     amount_max?: number;
     sort?: string;
     page?: number;
     per_page?: number;
-  }): Promise<ApiResponse<Transaction>> => {
+    include_deleted?: boolean;
+  }): Promise<PaginatedTransactions> => {
     const response = await api.get('/transactions', { params });
+    // Handle both paginated and non-paginated responses
+    const data = response.data;
+    if (data.items !== undefined) return data as PaginatedTransactions;
+    // Legacy flat array
+    return { items: data, total: data.length, page: 1, per_page: data.length, total_pages: 1, next: null, previous: null };
+  },
+
+  submitApproval: async (id: string): Promise<Transaction> => {
+    const response = await api.post(`/transactions/${id}/submit-approval/`);
+    return response.data;
+  },
+
+  approve: async (id: string, note?: string): Promise<Transaction> => {
+    const response = await api.post(`/transactions/${id}/approve/`, { note });
+    return response.data;
+  },
+
+  reject: async (id: string, note?: string): Promise<Transaction> => {
+    const response = await api.post(`/transactions/${id}/reject/`, { note });
+    return response.data;
+  },
+
+  uploadReceipt: async (id: string, file: File): Promise<{ receipt_url: string }> => {
+    const formData = new FormData();
+    formData.append('receipt', file);
+    const response = await api.post(`/transactions/${id}/upload-receipt/`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  deleteReceipt: async (id: string): Promise<void> => {
+    await api.delete(`/transactions/${id}/delete-receipt/`);
+  },
+
+  restore: async (id: string): Promise<Transaction> => {
+    const response = await api.post(`/transactions/${id}/restore/`);
     return response.data;
   },
 

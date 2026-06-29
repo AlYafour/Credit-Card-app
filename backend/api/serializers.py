@@ -2,7 +2,7 @@ import re
 import logging
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Card, Transaction, CashEntry, ChatSession, ChatMessage, MerchantGroup, MerchantRule
+from .models import Card, Transaction, CashEntry, ChatSession, ChatMessage, MerchantGroup, MerchantRule, Project, AuditLog
 from .services import encryption_service, detect_card_network, extract_last_four
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,9 @@ class CardSerializer(serializers.ModelSerializer):
     cardholder_name = serializers.CharField(write_only=True, required=False)
     cvv = serializers.CharField(write_only=True, required=False)
     iban = serializers.CharField(write_only=True, required=False)
-    
+    utilization_percentage = serializers.SerializerMethodField()
+    total_points_earned = serializers.SerializerMethodField()
+
     class Meta:
         model = Card
         fields = [
@@ -47,10 +49,27 @@ class CardSerializer(serializers.ModelSerializer):
             'card_replacement_fee', 'account_manager_name', 'account_manager_phone', 'bank_emails',
             'issue_date', 'classification',
             'points_earn_rate', 'points_value_fils',
+            'utilization_percentage', 'total_points_earned',
             'created_at', 'updated_at',
             'card_number', 'cardholder_name', 'cvv', 'iban'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'card_last_four']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'card_last_four', 'utilization_percentage', 'total_points_earned']
+
+    def get_utilization_percentage(self, obj):
+        if obj.credit_limit and obj.credit_limit > 0 and obj.current_balance is not None:
+            return round(float(obj.current_balance) / float(obj.credit_limit) * 100, 1)
+        return None
+
+    def get_total_points_earned(self, obj):
+        if not obj.points_earn_rate:
+            return 0
+        from django.db.models import Sum
+        result = obj.transactions.filter(
+            is_deleted=False,
+            transaction_type__in=['PURCHASE', 'CARD_PAYMENT'],
+        ).aggregate(total=Sum('amount'))
+        total_spend = float(result['total'] or 0)
+        return round(total_spend * obj.points_earn_rate)
     
     def validate_card_number(self, value):
         if value:
@@ -246,19 +265,36 @@ class CardUpdateSerializer(serializers.ModelSerializer):
 class TransactionSerializer(serializers.ModelSerializer):
     card_id = serializers.UUIDField(required=False, allow_null=True)
     merchant_group_id = serializers.UUIDField(required=False, allow_null=True, write_only=True)
+    project_id = serializers.UUIDField(required=False, allow_null=True, write_only=True)
     card_name = serializers.SerializerMethodField()
     card_last_four = serializers.SerializerMethodField()
     merchant_group_name = serializers.SerializerMethodField()
-    
+    project_name = serializers.SerializerMethodField()
+    receipt_url = serializers.SerializerMethodField()
+    approved_by_name = serializers.SerializerMethodField()
+
     class Meta:
         model = Transaction
         fields = [
-            'id', 'card', 'card_id', 'card_name', 'card_last_four', 'transaction_type', 'amount', 'currency',
+            'id', 'card', 'card_id', 'card_name', 'card_last_four',
+            'transaction_type', 'amount', 'currency',
             'merchant_name', 'description', 'category', 'transaction_date',
-            'source', 'expense_type', 'merchant_group', 'merchant_group_id', 'merchant_group_name',
-            'created_at', 'updated_at'
+            'source', 'expense_type',
+            'merchant_group', 'merchant_group_id', 'merchant_group_name',
+            'vat_amount', 'is_vat_inclusive',
+            'receipt_url',
+            'approval_status', 'approved_by', 'approved_by_name', 'approval_note',
+            'project', 'project_id', 'project_name',
+            'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'card', 'card_name', 'card_last_four', 'merchant_group', 'merchant_group_name', 'created_at', 'updated_at']
+        read_only_fields = [
+            'id', 'card', 'card_name', 'card_last_four',
+            'merchant_group', 'merchant_group_name',
+            'project', 'project_name',
+            'approved_by', 'approved_by_name',
+            'receipt_url',
+            'created_at', 'updated_at',
+        ]
     
     def get_card_name(self, obj):
         return obj.card.card_name if obj.card else None
@@ -268,6 +304,20 @@ class TransactionSerializer(serializers.ModelSerializer):
 
     def get_merchant_group_name(self, obj):
         return obj.merchant_group.name if obj.merchant_group else None
+
+    def get_project_name(self, obj):
+        return obj.project.name if obj.project else None
+
+    def get_receipt_url(self, obj):
+        if obj.receipt_file:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.receipt_file.url)
+            return obj.receipt_file.url
+        return None
+
+    def get_approved_by_name(self, obj):
+        return obj.approved_by.full_name or obj.approved_by.email if obj.approved_by else None
     
     def to_representation(self, instance):
         """Ensure card_id is included in response"""
@@ -293,6 +343,7 @@ class TransactionSerializer(serializers.ModelSerializer):
         # user can come from save(user=request.user) or context; avoid duplicate in create()
         user = validated_data.pop('user', None) or self.context['request'].user
         card_id = validated_data.pop('card_id', None)
+        project_id = validated_data.pop('project_id', None)
 
         # Convert transaction_date string to datetime if needed
         transaction_date = validated_data.get('transaction_date')
@@ -320,9 +371,17 @@ class TransactionSerializer(serializers.ModelSerializer):
                     {'card_id': 'Card not found. Please select a valid card or leave empty.'}
                 )
         
+        project = None
+        if project_id:
+            try:
+                project = Project.objects.get(id=project_id, user=user)
+            except Project.DoesNotExist:
+                pass
+
         transaction = Transaction.objects.create(
             user=user,
             card=card,
+            project=project,
             **validated_data
         )
         return transaction
@@ -396,3 +455,52 @@ class MerchantGroupSerializer(serializers.ModelSerializer):
             transaction_date__month=now.month,
         ).aggregate(total=Sum('amount'))
         return float(result['total'] or 0)
+
+
+class ProjectSerializer(serializers.ModelSerializer):
+    transaction_count = serializers.SerializerMethodField()
+    total_spent = serializers.SerializerMethodField()
+    monthly_spent = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Project
+        fields = [
+            'id', 'name', 'color', 'description', 'is_active',
+            'transaction_count', 'total_spent', 'monthly_spent',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'transaction_count', 'total_spent', 'monthly_spent']
+
+    def get_transaction_count(self, obj):
+        return obj.transactions.filter(is_deleted=False).count()
+
+    def get_total_spent(self, obj):
+        from django.db.models import Sum
+        result = obj.transactions.filter(is_deleted=False).aggregate(total=Sum('amount'))
+        return float(result['total'] or 0)
+
+    def get_monthly_spent(self, obj):
+        from django.db.models import Sum
+        from django.utils import timezone
+        now = timezone.now()
+        result = obj.transactions.filter(
+            is_deleted=False,
+            transaction_date__year=now.year,
+            transaction_date__month=now.month,
+        ).aggregate(total=Sum('amount'))
+        return float(result['total'] or 0)
+
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    user_email = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AuditLog
+        fields = [
+            'id', 'user', 'user_email', 'action', 'model_name',
+            'object_id', 'object_repr', 'changes', 'ip_address', 'created_at',
+        ]
+        read_only_fields = fields
+
+    def get_user_email(self, obj):
+        return obj.user.email if obj.user else None
