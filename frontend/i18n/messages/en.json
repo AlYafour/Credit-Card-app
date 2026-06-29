@@ -463,7 +463,9 @@
     "fullName": "Full Name",
     "fullNamePlaceholder": "Enter your full name",
     "noAccount": "Don't have an account?",
-    "hasAccount": "Already have an account?"
+    "hasAccount": "Already have an account?",
+    "or": "or",
+    "biometricLogin": "Sign in with Biometrics"
   },
   "settings": {
     "title": "Settings",

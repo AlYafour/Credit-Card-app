@@ -462,7 +462,9 @@
     "fullName": "الاسم الكامل",
     "fullNamePlaceholder": "أدخل اسمك الكامل",
     "noAccount": "ليس لديك حساب؟",
-    "hasAccount": "لديك حساب بالفعل؟"
+    "hasAccount": "لديك حساب بالفعل؟",
+    "or": "أو",
+    "biometricLogin": "تسجيل الدخول بالبصمة"
   },
   "settings": {
     "title": "الإعدادات",
