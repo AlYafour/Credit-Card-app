@@ -1971,7 +1971,112 @@ def merchants_list(request):
         )
         .order_by('-transaction_count')
     )
-    return Response({'items': list(merchants)})
+    merchant_list = list(merchants)
+
+    # Attach cached Arabic translations
+    from .models import MerchantTranslation
+    names = [m['merchant_name'] for m in merchant_list]
+    translations = MerchantTranslation.objects.filter(original_name__in=names).values('original_name', 'arabic_name')
+    trans_map = {t['original_name']: t['arabic_name'] for t in translations}
+    for m in merchant_list:
+        m['arabic_name'] = trans_map.get(m['merchant_name'])
+
+    return Response({'items': merchant_list})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def translate_merchants(request):
+    """Translate merchant names to Arabic using AI and cache in DB."""
+    from .models import MerchantTranslation
+    import json as _json
+
+    names = request.data.get('names', [])
+    if not names:
+        return Response({'translations': {}})
+
+    # Return already-cached translations without hitting AI
+    existing = MerchantTranslation.objects.filter(original_name__in=names).values('original_name', 'arabic_name')
+    result = {t['original_name']: t['arabic_name'] for t in existing}
+    untranslated = [n for n in names if n not in result]
+
+    if untranslated:
+        google_key = getattr(django_settings, 'GOOGLE_API_KEY', '')
+        anthropic_key = getattr(django_settings, 'ANTHROPIC_API_KEY', '')
+
+        names_block = '\n'.join(f'- {n}' for n in untranslated[:80])
+        prompt = (
+            'أنت مساعد ترجمة متخصص في أسماء المتاجر والشركات.\n'
+            'الأسماء التالية هي أسماء تجار وشركات باللغة الإنجليزية.\n'
+            'ترجمها إلى العربية ترجمة طبيعية مناسبة (مثلاً: "LULU HYPERMARKET" → "لولو هايبرماركت").\n'
+            'أعد الإجابة كـ JSON فقط بالشكل: {"ORIGINAL NAME": "الاسم العربي", ...}\n'
+            'لا تضف أي نص آخر.\n\n'
+            f'الأسماء:\n{names_block}'
+        )
+
+        translated_map = {}
+
+        # Try Gemini first
+        if google_key:
+            try:
+                import urllib.request
+                gemini_url = (
+                    'https://generativelanguage.googleapis.com/v1beta/'
+                    f'models/gemini-2.0-flash:generateContent?key={google_key}'
+                )
+                body = _json.dumps({'contents': [{'parts': [{'text': prompt}]}]}).encode()
+                req = urllib.request.Request(gemini_url, data=body, headers={'Content-Type': 'application/json'})
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    data = _json.loads(resp.read())
+                text = data['candidates'][0]['content']['parts'][0]['text'].strip()
+                # Strip markdown fences if present
+                if text.startswith('```'):
+                    text = '\n'.join(text.split('\n')[1:])
+                if text.endswith('```'):
+                    text = text[:text.rfind('```')]
+                translated_map = _json.loads(text.strip())
+            except Exception:
+                translated_map = {}
+
+        # Fallback to Claude
+        if not translated_map and anthropic_key:
+            try:
+                import urllib.request
+                body = _json.dumps({
+                    'model': 'claude-sonnet-4-6',
+                    'max_tokens': 2048,
+                    'messages': [{'role': 'user', 'content': prompt}],
+                }).encode()
+                req = urllib.request.Request(
+                    'https://api.anthropic.com/v1/messages',
+                    data=body,
+                    headers={
+                        'Content-Type': 'application/json',
+                        'x-api-key': anthropic_key,
+                        'anthropic-version': '2023-06-01',
+                    }
+                )
+                with urllib.request.urlopen(req, timeout=30) as resp:
+                    data = _json.loads(resp.read())
+                text = data['content'][0]['text'].strip()
+                if text.startswith('```'):
+                    text = '\n'.join(text.split('\n')[1:])
+                if text.endswith('```'):
+                    text = text[:text.rfind('```')]
+                translated_map = _json.loads(text.strip())
+            except Exception:
+                translated_map = {}
+
+        # Save new translations to DB
+        for orig, arabic in translated_map.items():
+            if orig and arabic:
+                MerchantTranslation.objects.update_or_create(
+                    original_name=orig,
+                    defaults={'arabic_name': arabic}
+                )
+                result[orig] = arabic
+
+    return Response({'translations': result})
 
 
 class CashEntryViewSet(viewsets.ModelViewSet):

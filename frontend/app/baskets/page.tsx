@@ -30,20 +30,42 @@ function MerchantPicker({
   onClose: () => void;
 }) {
   const [merchants, setMerchants] = useState<Merchant[]>([]);
+  const [arabicNames, setArabicNames] = useState<Record<string, string>>({});
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loadingMerchants, setLoadingMerchants] = useState(true);
+  const [translating, setTranslating] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    merchantsAPI.list().then(d => { setMerchants(d.items); setLoadingMerchants(false); })
-      .catch(() => setLoadingMerchants(false));
+    merchantsAPI.list().then(async d => {
+      const items = d.items;
+      setMerchants(items);
+      // Populate cached translations immediately
+      const cached: Record<string, string> = {};
+      items.forEach(m => { if (m.arabic_name) cached[m.merchant_name] = m.arabic_name; });
+      setArabicNames(cached);
+      setLoadingMerchants(false);
+
+      // Translate any without Arabic names
+      const untranslated = items.filter(m => !m.arabic_name).map(m => m.merchant_name);
+      if (untranslated.length > 0) {
+        setTranslating(true);
+        try {
+          const trans = await merchantsAPI.translate(untranslated);
+          setArabicNames(prev => ({ ...prev, ...trans }));
+        } catch { /* silent — show original names */ }
+        finally { setTranslating(false); }
+      }
+    }).catch(() => setLoadingMerchants(false));
   }, []);
 
-  const filtered = merchants.filter(m =>
-    !existingNames.includes(m.merchant_name) &&
-    m.merchant_name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = merchants.filter(m => {
+    if (existingNames.includes(m.merchant_name)) return false;
+    const q = search.toLowerCase();
+    return m.merchant_name.toLowerCase().includes(q) ||
+      (arabicNames[m.merchant_name] || '').includes(q);
+  });
 
   function toggle(name: string) {
     setSelected(prev => {
@@ -70,10 +92,16 @@ function MerchantPicker({
         <div className="merchant-picker-search">
           <input
             autoFocus
-            placeholder="ابحث عن تاجر..."
+            placeholder="ابحث بالعربي أو الإنجليزي..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
+          {translating && (
+            <div className="merchant-picker-translating">
+              <RefreshCw size={12} className="animate-spin" />
+              جاري ترجمة الأسماء...
+            </div>
+          )}
         </div>
         <div className="merchant-picker-list">
           {loadingMerchants ? (
@@ -92,7 +120,12 @@ function MerchantPicker({
               <span className="merchant-picker-check">
                 {selected.has(m.merchant_name) && <Check size={13} />}
               </span>
-              <span className="merchant-picker-name">{m.merchant_name}</span>
+              <span className="merchant-picker-name">
+                {arabicNames[m.merchant_name] || m.merchant_name}
+                {arabicNames[m.merchant_name] && (
+                  <span className="merchant-picker-orig">{m.merchant_name}</span>
+                )}
+              </span>
               <span className="merchant-picker-count">{m.transaction_count} معاملة</span>
             </button>
           ))}

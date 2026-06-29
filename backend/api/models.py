@@ -477,3 +477,16 @@ class AuditLog(models.Model):
 
     def __str__(self):
         return f'{self.action} {self.model_name} by {self.user}'
+
+
+class MerchantTranslation(models.Model):
+    """Cache for AI-translated merchant names (English → Arabic)."""
+    original_name = models.CharField(max_length=255, unique=True, db_index=True)
+    arabic_name = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'merchant_translations'
+
+    def __str__(self):
+        return f'{self.original_name} → {self.arabic_name}'
