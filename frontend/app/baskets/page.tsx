@@ -121,10 +121,10 @@ function MerchantPicker({
                 {selected.has(m.merchant_name) && <Check size={13} />}
               </span>
               <span className="merchant-picker-name">
-                {arabicNames[m.merchant_name] || m.merchant_name}
-                {arabicNames[m.merchant_name] && (
-                  <span className="merchant-picker-orig">{m.merchant_name}</span>
-                )}
+                <span className="merchant-picker-ar">
+                  {arabicNames[m.merchant_name] || (translating ? '...' : m.merchant_name)}
+                </span>
+                <span className="merchant-picker-en">{m.merchant_name}</span>
               </span>
               <span className="merchant-picker-count">{m.transaction_count} معاملة</span>
             </button>

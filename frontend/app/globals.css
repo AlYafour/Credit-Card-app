@@ -2967,19 +2967,27 @@ html[dir="rtl"] .credit-card-error {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   overflow: hidden;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
+  min-width: 0;
 }
-.merchant-picker-orig {
+.merchant-picker-ar {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.merchant-picker-en {
   font-size: 11px;
   font-weight: 400;
   color: var(--text-secondary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  direction: ltr;
+  text-align: end;
 }
 
 .basket-modal-overlay {
