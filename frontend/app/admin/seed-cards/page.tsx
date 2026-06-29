@@ -222,20 +222,16 @@ export default function SeedCardsPage() {
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [started, setStarted] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const isProd = process.env.NODE_ENV !== 'development';
 
-  // Block in production — dev-only tool
+  // Block in production — redirect and disable all logic
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'development') {
-      router.replace('/dashboard');
-    }
-  }, [router]);
-
-  if (process.env.NODE_ENV !== 'development') {
-    return null;
-  }
+    if (isProd) router.replace('/dashboard');
+  }, [isProd, router]);
 
   // تحميل حالة المستخدم عند فتح الصفحة
   useEffect(() => {
+    if (isProd) return;
     const checkAuth = async () => {
       try {
         await loadUser();
@@ -246,7 +242,7 @@ export default function SeedCardsPage() {
       }
     };
     checkAuth();
-  }, [loadUser]);
+  }, [isProd, loadUser]);
 
   const handleSeedCards = useCallback(async () => {
     if (!isAuthenticated) {
@@ -269,7 +265,6 @@ export default function SeedCardsPage() {
       try {
         await cardsAPI.create(card as any);
         successCount++;
-        // تأخير بسيط لتجنب الضغط على السيرفر
         await new Promise(resolve => setTimeout(resolve, 200));
       } catch (err: any) {
         console.error(`Error creating card ${i + 1}:`, err);
@@ -293,10 +288,13 @@ export default function SeedCardsPage() {
 
   // إضافة تلقائية عند فتح الصفحة بعد التأكد من المصادقة
   useEffect(() => {
+    if (isProd) return;
     if (!checkingAuth && isAuthenticated && !started && !loading) {
       handleSeedCards();
     }
-  }, [checkingAuth, isAuthenticated, started, loading, handleSeedCards]);
+  }, [isProd, checkingAuth, isAuthenticated, started, loading, handleSeedCards]);
+
+  if (isProd) return null;
 
   // عرض حالة التحميل
   if (checkingAuth || isLoading) {
