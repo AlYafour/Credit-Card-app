@@ -2745,6 +2745,314 @@ html[dir="rtl"] .credit-card-error {
 }
 
 /* ============================================================
+   BASKETS PAGE
+   ============================================================ */
+
+.basket-summary-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+.basket-summary-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) !important;
+  margin-bottom: 0 !important;
+}
+.basket-summary-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.basket-summary-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+.basket-summary-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.basket-summary-currency {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.basket-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--space-4);
+}
+.basket-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) !important;
+  margin-bottom: 0 !important;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.basket-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.basket-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.basket-card-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  min-width: 0;
+}
+.basket-color-dot-sm {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.basket-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.basket-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.basket-card-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.basket-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+  background: var(--bg-secondary, rgba(0,0,0,0.03));
+  border-radius: var(--radius);
+  padding: var(--space-3);
+}
+.basket-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.basket-stat-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.basket-stat-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.basket-budget-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.basket-budget-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.basket-budget-track {
+  height: 6px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.basket-budget-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.basket-quick-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+.basket-action-btn {
+  justify-content: center;
+  font-size: 13px !important;
+  padding: 6px 10px !important;
+}
+
+.basket-rules-section {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.basket-rules-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.basket-rules-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+.basket-rules-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--primary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  transition: background 0.15s;
+}
+.basket-rules-add-btn:hover { background: var(--primary-subtle, rgba(107,44,145,0.08)); }
+.basket-rule-add-row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+.basket-no-rules {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+.basket-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.basket-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--bg-secondary, rgba(0,0,0,0.05));
+  border: 1px solid var(--border);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+.basket-tag-match {
+  color: var(--text-secondary);
+  font-size: 11px;
+}
+.basket-tag-remove {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  padding: 1px;
+  border-radius: 50%;
+  transition: color 0.15s;
+}
+.basket-tag-remove:hover { color: var(--error); }
+
+.basket-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.basket-type-row {
+  display: flex;
+  gap: var(--space-2);
+}
+.basket-type-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.basket-type-btn:hover { border-color: var(--primary); color: var(--primary); }
+.basket-type-btn.active {
+  border-color: var(--primary);
+  background: var(--primary-subtle, rgba(107,44,145,0.1));
+  color: var(--primary);
+  font-weight: 600;
+}
+.basket-color-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.basket-color-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s;
+}
+.basket-color-dot:hover { transform: scale(1.15); }
+.basket-color-dot.active {
+  border-color: var(--text);
+  transform: scale(1.15);
+}
+.basket-form-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+/* ── RTL ── */
+[dir="rtl"] .basket-card-header { flex-direction: row-reverse; }
+[dir="rtl"] .basket-card-title { flex-direction: row-reverse; }
+[dir="rtl"] .basket-rules-header { flex-direction: row-reverse; }
+[dir="rtl"] .basket-quick-actions { direction: rtl; }
+[dir="rtl"] .basket-budget-labels { flex-direction: row-reverse; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .basket-summary-row { grid-template-columns: 1fr; }
+  .basket-grid { grid-template-columns: 1fr; }
+  .basket-stats { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ============================================================
    TRANSACTIONS PAGE — FILTER BAR, TABLE, IMPORT MODAL
    ============================================================ */
 

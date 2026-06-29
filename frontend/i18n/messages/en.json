@@ -628,7 +628,9 @@
     "personalSummary": "Personal Expenses",
     "unclassified": "Unclassified",
     "viewTransactions": "View Transactions",
-    "exportBasket": "Export Excel"
+    "exportBasket": "Export Excel",
+    "save": "Save",
+    "cancel": "Cancel"
   },
   "cardholders": {
     "title": "Cardholders",

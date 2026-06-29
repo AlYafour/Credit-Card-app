@@ -627,7 +627,9 @@
     "personalSummary": "المصاريف الشخصية",
     "unclassified": "غير مصنف",
     "viewTransactions": "عرض المعاملات",
-    "exportBasket": "تصدير Excel"
+    "exportBasket": "تصدير Excel",
+    "save": "حفظ",
+    "cancel": "إلغاء"
   },
   "cardholders": {
     "title": "حاملو البطاقات",

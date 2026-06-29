@@ -238,7 +238,7 @@ export default function TransactionsPage() {
   };
 
   const handleExport = () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token = typeof window !== 'undefined' ? localStorage.getItem('access_token') : null;
     const url = transactionsAPI.exportExcel({
       card_id: selectedCard !== 'all' ? selectedCard : undefined,
       transaction_type: transactionType !== 'all' ? transactionType : undefined,
