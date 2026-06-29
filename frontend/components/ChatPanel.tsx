@@ -231,23 +231,25 @@ export default function ChatPanel() {
 
   const handleSend = async () => {
     if ((!input.trim() && !imagePreview && !attachedFile) || isSending) return;
-    const text = input.trim() || (imagePreview ? (t('chat.imageAttached') || 'Image attached') : attachedFile ? `مرفق: ${attachedFile.name}` : '');
-    sendMessage(text, imagePreview || undefined);
-    setInput('');
-    if (inputRef.current) { inputRef.current.style.height = 'auto'; }
-    const fileToExtract = attachedFile;
-    setImagePreview(null);
-    setAttachedFile(null);
-    if (fileToExtract) {
-      try {
-        const result = await cardsAPI.extractDocument(fileToExtract.base64, fileToExtract.type);
-        if (!result.error) {
-          window.dispatchEvent(new CustomEvent('cardDataExtracted', { detail: result }));
-        }
-      } catch {
-        // silent — chat message already sent
+    const isPdf = attachedFile?.type === 'application/pdf';
+    const isImage = attachedFile?.type?.startsWith('image/') || !!imagePreview;
+
+    let text = input.trim();
+    if (!text) {
+      if (imagePreview || isImage) {
+        text = ar('استخرج المعاملات من هذا الكشف/الصورة وأضفها تلقائياً', 'Extract transactions from this statement/image and add them automatically');
+      } else if (isPdf) {
+        text = ar('استورد معاملات هذا الكشف البنكي وأضفها', 'Import transactions from this bank statement and add them');
       }
     }
+
+    // For PDFs, send base64 as image to AI (Gemini supports PDF inline)
+    const imageToSend = imagePreview || (attachedFile && !isPdf ? attachedFile.base64 : null) || (isPdf ? attachedFile?.base64 : null);
+    sendMessage(text, imageToSend || undefined);
+    setInput('');
+    if (inputRef.current) { inputRef.current.style.height = 'auto'; }
+    setImagePreview(null);
+    setAttachedFile(null);
   };
 
   // ── Helpers ───────────────────────────────────────────────────────────
@@ -364,14 +366,42 @@ export default function ChatPanel() {
               <div className="chat-loading"><Loader2 size={24} className="scan-spinner" /></div>
             ) : messages.length === 0 ? (
               <div className="chat-welcome">
-                <Bot size={40} />
-                <p>{t('chat.noMessages') || "Hi! I'm your financial assistant. Ask me anything about your cards, balances, or spending."}</p>
+                <div className="chat-welcome-avatar">
+                  <Bot size={28} />
+                </div>
+                <div className="chat-welcome-text">
+                  <strong>{ar('مرحباً! أنا مساعدك المالي الذكي', 'Hello! I\'m your AI financial advisor')}</strong>
+                  <p>{ar('أستطيع تحليل إنفاقك، إضافة وحذف المعاملات، استيراد كشوفات الحساب، وإصدار التقارير المالية الاحترافية.', 'I can analyze your spending, add/delete transactions, import bank statements, and generate professional financial reports.')}</p>
+                </div>
+                <div className="chat-quick-actions">
+                  <p className="chat-quick-label">{ar('اقتراحات سريعة:', 'Quick suggestions:')}</p>
+                  <div className="chat-quick-grid">
+                    {[
+                      { icon: '📊', ar: 'تقرير الإنفاق هذا الشهر', en: 'Spending report this month' },
+                      { icon: '💳', ar: 'ما هو أعلى رصيد بطاقة؟', en: 'Which card has highest balance?' },
+                      { icon: '📥', ar: 'أضف معاملة من SMS', en: 'Add transaction from SMS' },
+                      { icon: '📈', ar: 'قارن إنفاقي بالشهر الماضي', en: 'Compare spending to last month' },
+                      { icon: '⚠️', ar: 'أي بطاقات تقترب من الحد؟', en: 'Cards near credit limit?' },
+                      { icon: '📄', ar: 'استورد كشف حساب بنكي', en: 'Import bank statement' },
+                    ].map((q, i) => (
+                      <button
+                        key={i}
+                        className="chat-quick-btn"
+                        onClick={() => { sendMessage(locale === 'ar' ? q.ar : q.en); }}
+                        type="button"
+                      >
+                        <span>{q.icon}</span>
+                        <span>{locale === 'ar' ? q.ar : q.en}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : (
               messages.map((msg, i) => (
                 <div key={i} className={`chat-msg chat-msg-${msg.role}`}>
                   <div className="chat-msg-avatar">
-                    {msg.role === 'user' ? <UserIcon size={16} /> : <Bot size={16} />}
+                    {msg.role === 'user' ? <UserIcon size={14} /> : <Bot size={14} />}
                   </div>
                   <div className="chat-msg-bubble">
                     {msg.role === 'assistant' ? (

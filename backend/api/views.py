@@ -678,7 +678,7 @@ class CardViewSet(viewsets.ModelViewSet):
                     ]
 
                 message = client.messages.create(
-                    model='claude-sonnet-4-6', max_tokens=2048,
+                    model='claude-sonnet-4-6', max_tokens=8192,
                     messages=[{'role': 'user', 'content': content}]
                 )
                 text = message.content[0].text.strip()
@@ -2179,14 +2179,14 @@ def chat_send(request):
             card_totals[cid] = {'purchases': 0.0, 'payments': 0.0, 'refunds': 0.0, 'withdrawals': 0.0, 'count': 0}
         t = row['transaction_type']
         v = float(row['total'])
-        if t == 'purchase':
+        if t in ('PURCHASE', 'CARD_PAYMENT', 'BALANCE_TRANSFER', 'INSTALLMENT_PRINCIPAL', 'BANK_FEE', 'FINANCE_CHARGE', 'FOREIGN_EXCHANGE_FEE', 'QUASI_CASH', 'PREAUTH_HOLD'):
             card_totals[cid]['purchases'] += v
-        elif t == 'payment':
-            card_totals[cid]['payments'] += v
-        elif t == 'refund':
+        elif t in ('REFUND', 'CASHBACK', 'REWARD_CREDIT', 'REVERSAL', 'CHARGEBACK', 'ADJUSTMENT', 'PREAUTH_RELEASE'):
             card_totals[cid]['refunds'] += v
-        elif t == 'withdrawal':
+        elif t in ('CASH_WITHDRAWAL', 'CASH_ADVANCE'):
             card_totals[cid]['withdrawals'] += v
+        elif t in ('WALLET_TOPUP', 'TRANSFER'):
+            card_totals[cid]['payments'] += v
         card_totals[cid]['count'] += row['cnt']
 
     # Per-card latest transaction date
@@ -2197,8 +2197,11 @@ def chat_send(request):
     }
 
     # Category breakdown (all time, top 15)
+    EXPENSE_TYPES = ['PURCHASE', 'CARD_PAYMENT', 'CASH_WITHDRAWAL', 'CASH_ADVANCE',
+                     'BALANCE_TRANSFER', 'INSTALLMENT_PRINCIPAL', 'BANK_FEE',
+                     'FINANCE_CHARGE', 'FOREIGN_EXCHANGE_FEE', 'QUASI_CASH']
     category_totals = list(
-        all_txns_qs.filter(transaction_type__in=['purchase', 'withdrawal'])
+        all_txns_qs.filter(transaction_type__in=EXPENSE_TYPES)
         .values('category').annotate(total=Sum('amount'), cnt=Count('id'))
         .order_by('-total')[:15]
     )
@@ -2219,11 +2222,13 @@ def chat_send(request):
         if key not in monthly_map:
             monthly_map[key] = {'month': key, 'purchases': 0.0, 'payments': 0.0, 'refunds': 0.0}
         t = row['transaction_type']
-        if t in ('purchase', 'withdrawal'):
+        if t in ('PURCHASE', 'CARD_PAYMENT', 'CASH_WITHDRAWAL', 'CASH_ADVANCE',
+                 'BALANCE_TRANSFER', 'INSTALLMENT_PRINCIPAL', 'BANK_FEE',
+                 'FINANCE_CHARGE', 'FOREIGN_EXCHANGE_FEE', 'QUASI_CASH'):
             monthly_map[key]['purchases'] += float(row['total'])
-        elif t == 'payment':
+        elif t in ('WALLET_TOPUP', 'TRANSFER'):
             monthly_map[key]['payments'] += float(row['total'])
-        elif t == 'refund':
+        elif t in ('REFUND', 'CASHBACK', 'REWARD_CREDIT', 'REVERSAL', 'CHARGEBACK', 'ADJUSTMENT'):
             monthly_map[key]['refunds'] += float(row['total'])
 
     cards_context = []
@@ -2269,6 +2274,15 @@ def chat_send(request):
         f"{t.transaction_date.strftime('%Y-%m-%d') if t.transaction_date else '?'}|{t.transaction_type}|{float(t.amount):.2f}|{t.currency}|{t.merchant_name or ''}|{t.card.card_name if t.card else 'Cash'}|{t.card.card_last_four if t.card else ''}|{t.category or ''}"
         for t in all_txns_list
     ]
+    # Last 150 transactions with IDs (for delete/update by AI)
+    recent_txns_with_ids = [
+        {'id': str(t.id), 'date': t.transaction_date.strftime('%Y-%m-%d') if t.transaction_date else '?',
+         'type': t.transaction_type, 'amount': float(t.amount), 'currency': t.currency,
+         'merchant': t.merchant_name or '', 'card': t.card.card_name if t.card else 'Cash',
+         'last4': t.card.card_last_four if t.card else '', 'category': t.category or '',
+         'approval': t.approval_status if hasattr(t, 'approval_status') else None}
+        for t in list(all_txns_list[:150])
+    ]
 
     # Cash balance
     cash_qs = CashEntry.objects.filter(user=request.user, is_deleted=False)
@@ -2307,99 +2321,115 @@ def chat_send(request):
         if card.card_last_four:
             card_id_map[card.card_last_four] = str(card.id)
 
-    system_prompt = f"""You are CardVault AI, a smart financial assistant with FULL access to all the user's financial data.
+    today_str = timezone.now().strftime('%Y-%m-%d')
+    system_prompt = f"""أنت CardVault AI — المساعد المالي الذكي لشركة ال يافور للنقليات والمقاولات، أبوظبي، الإمارات العربية المتحدة.
+أنت خبير مالي محترف من الدرجة الأولى تشبه مساعد بنك الإمارات دبي الوطني (ENBD) أو بنك أبوظبي الأول (FAB) — دقيق، موثوق، وتتصرف فعلاً.
 
-## User's Cards ({len(cards_context)} cards) — includes ALL-TIME transaction aggregates:
+## بياناتك الكاملة — {len(cards_context)} بطاقة، {total_count} معاملة
+
+### البطاقات وملخصاتها:
 {json.dumps(cards_context, ensure_ascii=False, default=str)}
 
-## ALL Transactions Summary ({total_count} total transactions in database):
-- Top categories (all time): {json.dumps([{'category': r['category'] or 'Other', 'total': float(r['total']), 'count': r['cnt']} for r in category_totals], default=str)}
-- Monthly trend (last 6 months): {json.dumps(sorted(monthly_map.values(), key=lambda x: x['month']), default=str)}
+### تحليل الإنفاق:
+- أعلى الفئات (كل الوقت): {json.dumps([{{'category': r['category'] or 'Other', 'total': round(float(r['total']),2), 'count': r['cnt']}} for r in category_totals], default=str)}
+- الاتجاه الشهري (6 أشهر): {json.dumps(sorted(monthly_map.values(), key=lambda x: x['month']), default=str)}
 
-## Imported Statements ({len(statements_context)} statements on record):
+### الكشوفات المستوردة ({len(statements_context)}):
 {json.dumps(statements_context, ensure_ascii=False, default=str)}
 
-## ALL {total_count} Transactions (format: date|type|amount|currency|merchant|card|last4|category):
+### الرصيد النقدي: {cash_balance:.2f} AED
+
+### آخر 150 معاملة بمعرفاتها (للحذف/التعديل):
+{json.dumps(recent_txns_with_ids, ensure_ascii=False, default=str)}
+
+### جميع المعاملات ({total_count}) — تنسيق مضغوط (date|type|amount|currency|merchant|card|last4|category):
 {chr(10).join(txn_context)}
 
-## Cash Balance: {cash_balance} AED
+---
 
-## Rules:
-- You have FULL visibility into ALL transactions (aggregated in txn_summary per card above)
-- Use computed_balance_from_transactions as the most accurate balance (sum of all txns)
-- stored_balance is what was manually entered — may differ from computed; mention both if asked
-- Answer questions about ALL spending, not just recent — use txn_summary totals
-- Respond in the SAME LANGUAGE the user writes (Arabic or English)
-- Be concise, accurate, and analytical — give exact numbers
-- Format amounts clearly (e.g. 1,500.00 AED)
-- Today: {timezone.now().strftime('%Y-%m-%d')}
+## قواعد الإجابة:
+- رُدّ بنفس لغة المستخدم (عربي أو إنجليزي) تلقائياً
+- كن دقيقاً بالأرقام — استخدم البيانات الفعلية لا تخمّن
+- اعرض المبالغ بوضوح: مثل ١٥٠٠.٠٠ د.إ / 1,500.00 AED
+- computed_balance_from_transactions هو الرصيد الأدق (مجموع المعاملات الفعلي)
+- stored_balance ما تم إدخاله يدوياً — قد يختلف عن المحسوب
+- اليوم: {today_str}
+- لا تقل أبداً "لا أستطيع" — لديك صلاحية كاملة للإضافة والتعديل والحذف والتقارير والتصدير
 
-## ACTIONS - You can perform real actions!
-You can perform the following actions. Include the action block at the END of your response (after your human-readable message).
+---
 
-### ADD TRANSACTION
-When the user asks to add/record a transaction, or sends a bank SMS/screenshot:
+## الإجراءات — أنت تتصرف فعلاً!
+ضع بلوك الإجراء في نهاية ردّك (بعد النص البشري).
+يمكنك تضمين عدة بلوكات في رد واحد.
+
+### إضافة معاملة
+عند إضافة أي معاملة أو استخراجها من رسالة SMS أو كشف حساب:
 [ACTION:ADD_TRANSACTION]
-{{"amount": 150.00, "merchant_name": "Carrefour", "transaction_type": "purchase", "transaction_date": "{timezone.now().strftime('%Y-%m-%d')}", "card_last_four": "4311", "currency": "AED", "category": "Shopping", "description": "Carrefour purchase"}}
+{{"amount": 150.00, "merchant_name": "Carrefour", "transaction_type": "PURCHASE", "transaction_date": "{today_str}", "card_last_four": "4311", "currency": "AED", "category": "Shopping", "description": "وصف اختياري"}}
 [/ACTION]
-- transaction_type: purchase, withdrawal, payment, refund, transfer, deposit
-- card_last_four: match from user's cards, or omit if cash
-- transaction_date: YYYY-MM-DD (today if not specified)
-- category: Shopping, Food, Transport, Bills, Entertainment, Transfer, ATM, Other
+- transaction_type: PURCHASE | CARD_PAYMENT | CASH_WITHDRAWAL | CASH_ADVANCE | REFUND | REVERSAL | WALLET_TOPUP | TRANSFER | BALANCE_TRANSFER | BANK_FEE | CASHBACK | CHARGEBACK | ADJUSTMENT
+- card_last_four: من قائمة البطاقات أعلاه، أو احذفها إن كانت نقداً
+- category: Shopping | Food | Transport | Bills | Entertainment | Healthcare | Fuel | Utilities | Government | Salary | Transfer | ATM | Other
 
-### ADD CARD
-When the user asks to add/save a new card:
+### إضافة معاملات دفعة واحدة (استيراد كشف حساب)
+عندما يرسل المستخدم كشف حساب بنكي أو قائمة معاملات — استخرج كل المعاملات وأضفها دفعة واحدة:
+[ACTION:ADD_TRANSACTIONS_BULK]
+{{"card_last_four": "4311", "transactions": [
+  {{"amount": 500.00, "merchant_name": "DEWA", "transaction_type": "CARD_PAYMENT", "transaction_date": "{today_str}", "currency": "AED", "category": "Utilities"}},
+  {{"amount": 250.00, "merchant_name": "ADNOC", "transaction_type": "PURCHASE", "transaction_date": "{today_str}", "currency": "AED", "category": "Fuel"}}
+]}}
+[/ACTION]
+- أضف جميع المعاملات في بلوك واحد (لا عدة بلوكات منفصلة)
+- card_last_four: ينطبق على جميع المعاملات ما لم تحدد غير ذلك
+
+### حذف معاملة
+عند حذف معاملة محددة (استخدم الـ id من قائمة "آخر 150 معاملة"):
+[ACTION:DELETE_TRANSACTION]
+{{"transaction_id": "<uuid من القائمة أعلاه>"}}
+[/ACTION]
+
+### تعديل معاملة
+عند تعديل أي حقل في معاملة:
+[ACTION:UPDATE_TRANSACTION]
+{{"transaction_id": "<uuid>", "amount": 200.00, "merchant_name": "اسم جديد", "category": "Food", "transaction_date": "{today_str}", "description": "وصف"}}
+[/ACTION]
+- أدرج فقط الحقول التي تحتاج تغيير
+
+### إضافة بطاقة
 [ACTION:ADD_CARD]
 {{"card_name": "Visa Platinum", "bank_name": "Emirates NBD", "card_type": "credit", "card_network": "visa", "card_last_four": "1234", "credit_limit": 50000, "current_balance": 0, "payment_due_date": 25, "balance_currency": "AED"}}
 [/ACTION]
-- card_type: credit, debit, prepaid
-- card_network: visa, mastercard, amex, or omit if unknown
-- payment_due_date: day of month (1-31), or omit if unknown
-- credit_limit and current_balance: numbers, omit if debit/prepaid
 
-### UPDATE CARD
-When user asks to update/edit any card field (balance, name, limit, due date, etc.):
+### تعديل بطاقة
 [ACTION:UPDATE_CARD]
-{{"card_id": "<id from cards list>", "card_name": "...", "current_balance": 5000, "credit_limit": 15000, "payment_due_date": 15, "available_balance": 10000}}
+{{"card_id": "<id من قائمة البطاقات>", "current_balance": 5000, "credit_limit": 15000, "payment_due_date": 15}}
 [/ACTION]
-- card_id: use the id from the cards list above
-- Only include the fields that need to change
-- For balance: current_balance = outstanding amount owed
-- For available: available_balance = remaining spending power
+- أدرج فقط الحقول التي تتغير
 
-### DELETE CARD
-When user asks to delete/remove a card permanently:
+### حذف بطاقة
 [ACTION:DELETE_CARD]
-{{"card_id": "<id from cards list>"}}
+{{"card_id": "<id>"}}
 [/ACTION]
-- This soft-deletes the card (data is kept for history)
 
-### MERGE CARDS
-When user says two cards are the same card (replacement, same account), merge all transactions from old to new then delete old:
+### دمج بطاقتين
+عند استبدال بطاقة — انقل جميع المعاملات من القديمة للجديدة ثم احذف القديمة:
 [ACTION:MERGE_CARDS]
-{{"source_card_id": "<old card id to delete>", "target_card_id": "<new/keep card id>", "delete_source": true}}
+{{"source_card_id": "<القديمة>", "target_card_id": "<الجديدة>", "delete_source": true}}
 [/ACTION]
-- Moves ALL transactions from source to target
-- Then soft-deletes the source card
-- Use this when user says card was replaced/renewed
 
-### CLEAR ALL DATA
-When user asks to clear / reset / delete ALL transactions and statements (start fresh). Requires explicit confirmation word (صفّر / امسح كل شيء / clear all / reset data):
+### مسح كامل للبيانات
+يتطلب كلمة تأكيد صريحة (صفّر / امسح كل شيء / clear all / reset data):
 [ACTION:CLEAR_ALL_DATA]
 {{"clear_transactions": true, "clear_statements": true, "clear_cards": false}}
 [/ACTION]
-- clear_transactions: deletes ALL transactions for the user
-- clear_statements: deletes ALL imported statements for the user
-- clear_cards: set true ONLY if user explicitly asks to delete cards too (default false)
-- ALWAYS mention how many records were deleted in your response
 
-Rules:
-- You CAN and SHOULD perform these actions when asked
-- Always confirm what you did in your message text above the action block
-- NEVER say you can't edit/delete/merge cards - you CAN using the action blocks above
-- You can include multiple action blocks in one response if needed
-- When merging cards, always confirm which is old and which is new before acting
-- For CLEAR_ALL_DATA: ask for confirmation ONCE if user hasn't said a clear confirmation word, then act"""
+---
+
+## قدرات التقارير والتحليل:
+- عند طلب تقرير: اعرض تحليلاً احترافياً مع جداول markdown واضحة
+- يمكنك تحليل: الإنفاق الشهري، المقارنة بين البطاقات، أعلى التجار، نسبة استخدام الائتمان، توقعات الدفع القادم
+- اقترح دائماً توصيات مالية ذكية بناءً على البيانات الفعلية
+- عند وجود كشف حساب: استخرج جميع المعاملات تلقائياً واعرض ملخصاً قبل الإضافة"""
 
     ai_response = None
     google_key = getattr(django_settings, 'GOOGLE_API_KEY', '')
@@ -2434,7 +2464,7 @@ Rules:
 
         payload = json.dumps({
             'contents': gemini_contents,
-            'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 2048}
+            'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 8192}
         }).encode('utf-8')
 
         for attempt in range(3):
@@ -2479,7 +2509,7 @@ Rules:
             else:
                 claude_msgs.append({'role': 'user', 'content': user_message})
             message = client.messages.create(
-                model='claude-sonnet-4-6', max_tokens=2048,
+                model='claude-sonnet-4-6', max_tokens=8192,
                 system=system_prompt, messages=claude_msgs,
             )
             ai_response = message.content[0].text.strip()
@@ -2513,12 +2543,13 @@ Rules:
                 if card_last_four:
                     card_obj = user_cards.filter(card_last_four=card_last_four).first()
 
+                txn_type = txn_data.get('transaction_type', 'PURCHASE').upper()
                 Transaction.objects.create(
                     user=request.user,
                     card=card_obj,
                     amount=Decimal(str(amount)),
                     currency=txn_data.get('currency', 'AED'),
-                    transaction_type=txn_data.get('transaction_type', 'purchase'),
+                    transaction_type=txn_type,
                     merchant_name=txn_data.get('merchant_name', ''),
                     category=txn_data.get('category', 'Other'),
                     description=txn_data.get('description', ''),
@@ -2526,9 +2557,15 @@ Rules:
                 )
 
                 # Update card balance if applicable
-                if card_obj and txn_data.get('transaction_type') in ('purchase', 'withdrawal'):
-                    if card_obj.current_balance is not None:
+                _debit_types = ('PURCHASE', 'CARD_PAYMENT', 'CASH_WITHDRAWAL', 'CASH_ADVANCE',
+                                'BALANCE_TRANSFER', 'BANK_FEE', 'FINANCE_CHARGE', 'FOREIGN_EXCHANGE_FEE')
+                _credit_types = ('REFUND', 'CASHBACK', 'REVERSAL', 'CHARGEBACK', 'WALLET_TOPUP')
+                if card_obj and card_obj.current_balance is not None:
+                    if txn_type in _debit_types:
                         card_obj.current_balance = Decimal(str(float(card_obj.current_balance) + amount))
+                        card_obj.save(update_fields=['current_balance'])
+                    elif txn_type in _credit_types:
+                        card_obj.current_balance = Decimal(str(max(0.0, float(card_obj.current_balance) - amount)))
                         card_obj.save(update_fields=['current_balance'])
 
                 actions_performed.append({
@@ -2685,6 +2722,92 @@ Rules:
                             request.user.email, deleted_txns, deleted_stmts, deleted_cards)
             except Exception as e:
                 logger.warning('Chat CLEAR_ALL_DATA error: %s', str(e))
+
+    # Process ADD_TRANSACTIONS_BULK actions (statement import)
+    if '[ACTION:ADD_TRANSACTIONS_BULK]' in ai_response:
+        action_pattern = r'\[ACTION:ADD_TRANSACTIONS_BULK\]\s*(\{.*?\})\s*\[/ACTION\]'
+        for match in re.finditer(action_pattern, ai_response, re.DOTALL):
+            try:
+                data = json.loads(match.group(1))
+                card_last_four = data.get('card_last_four', '')
+                card_obj = user_cards.filter(card_last_four=card_last_four).first() if card_last_four else None
+                txns_list = data.get('transactions', [])
+                added = 0
+                for td in txns_list:
+                    if not td.get('amount'):
+                        continue
+                    # Per-txn card override
+                    per_card_l4 = td.get('card_last_four', card_last_four)
+                    per_card = user_cards.filter(card_last_four=per_card_l4).first() if per_card_l4 else card_obj
+                    txn_type = td.get('transaction_type', 'PURCHASE').upper()
+                    Transaction.objects.create(
+                        user=request.user,
+                        card=per_card,
+                        amount=Decimal(str(td['amount'])),
+                        currency=td.get('currency', 'AED'),
+                        transaction_type=txn_type,
+                        merchant_name=td.get('merchant_name', ''),
+                        category=td.get('category', 'Other'),
+                        description=td.get('description', ''),
+                        transaction_date=td.get('transaction_date', timezone.now().strftime('%Y-%m-%d')),
+                    )
+                    added += 1
+                actions_performed.append({'type': 'bulk_transactions_added', 'count': added, 'card': card_last_four})
+                logger.info('ADD_TRANSACTIONS_BULK: user=%s added=%d', request.user.email, added)
+            except Exception as e:
+                logger.warning('Chat ADD_TRANSACTIONS_BULK error: %s', str(e))
+
+    # Process DELETE_TRANSACTION actions
+    if '[ACTION:DELETE_TRANSACTION]' in ai_response:
+        action_pattern = r'\[ACTION:DELETE_TRANSACTION\]\s*(\{.*?\})\s*\[/ACTION\]'
+        for match in re.finditer(action_pattern, ai_response, re.DOTALL):
+            try:
+                data = json.loads(match.group(1))
+                txn_id = data.get('transaction_id')
+                if not txn_id:
+                    continue
+                txn_obj = Transaction.objects.filter(id=txn_id, user=request.user).first()
+                if txn_obj:
+                    txn_obj.is_deleted = True
+                    txn_obj.save(update_fields=['is_deleted'])
+                    actions_performed.append({
+                        'type': 'transaction_deleted',
+                        'transaction_id': txn_id,
+                        'merchant': txn_obj.merchant_name,
+                        'amount': float(txn_obj.amount),
+                    })
+            except Exception as e:
+                logger.warning('Chat DELETE_TRANSACTION error: %s', str(e))
+
+    # Process UPDATE_TRANSACTION actions
+    if '[ACTION:UPDATE_TRANSACTION]' in ai_response:
+        action_pattern = r'\[ACTION:UPDATE_TRANSACTION\]\s*(\{.*?\})\s*\[/ACTION\]'
+        for match in re.finditer(action_pattern, ai_response, re.DOTALL):
+            try:
+                data = json.loads(match.group(1))
+                txn_id = data.pop('transaction_id', None)
+                if not txn_id:
+                    continue
+                txn_obj = Transaction.objects.filter(id=txn_id, user=request.user).first()
+                if not txn_obj:
+                    continue
+                allowed = ['amount', 'merchant_name', 'category', 'transaction_date', 'description',
+                           'transaction_type', 'currency', 'expense_type']
+                updated = []
+                for field in allowed:
+                    if field in data:
+                        val = data[field]
+                        if field == 'amount':
+                            val = Decimal(str(val))
+                        if field == 'transaction_type':
+                            val = str(val).upper()
+                        setattr(txn_obj, field, val)
+                        updated.append(field)
+                if updated:
+                    txn_obj.save(update_fields=updated)
+                    actions_performed.append({'type': 'transaction_updated', 'transaction_id': txn_id, 'fields': updated})
+            except Exception as e:
+                logger.warning('Chat UPDATE_TRANSACTION error: %s', str(e))
 
     # Strip all action blocks from the display response
     display_response = re.sub(r'\[ACTION:[A-Z_]+\].*?\[/ACTION\]', '', ai_response, flags=re.DOTALL).strip()
