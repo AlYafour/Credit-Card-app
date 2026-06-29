@@ -2783,6 +2783,141 @@ html[dir="rtl"] .credit-card-error {
 }
 
 /* ============================================================
+   CARDHOLDERS PAGE
+   ============================================================ */
+.ch-summary-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-3);
+}
+.ch-summary-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) !important;
+  margin-bottom: 0 !important;
+}
+.ch-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: var(--space-4);
+}
+.ch-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4) !important;
+  margin-bottom: 0 !important;
+}
+.ch-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.ch-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+.ch-info {
+  flex: 1;
+  min-width: 0;
+}
+.ch-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ch-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.ch-ownership-badge {
+  background: var(--border);
+  border-radius: 20px;
+  padding: 1px 7px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.ch-monthly {
+  text-align: end;
+  flex-shrink: 0;
+}
+.ch-monthly-amount {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.ch-monthly-label {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.ch-breakdown {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+.ch-breakdown-item {
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  background: var(--bg-secondary, var(--bg));
+}
+.ch-company { background: rgba(59,130,246,0.08); }
+.ch-personal { background: rgba(16,185,129,0.08); }
+.ch-breakdown-label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-bottom: 3px;
+}
+.ch-company .ch-breakdown-label { color: #3b82f6; }
+.ch-personal .ch-breakdown-label { color: #10b981; }
+.ch-breakdown-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.ch-spend-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+  display: flex;
+}
+.ch-spend-fill { height: 100%; transition: width 0.3s ease; }
+.ch-spend-company { background: #3b82f6; }
+.ch-spend-personal { background: #10b981; }
+.ch-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border);
+}
+.ch-last-activity {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* ============================================================
    BASKETS PAGE
    ============================================================ */
 

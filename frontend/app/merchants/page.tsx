@@ -30,7 +30,14 @@ export default function MerchantsPage() {
   const { isAuthenticated, loadUser } = useAuthStore();
   const { t, isRTL } = useTranslations();
 
+  const SESSION_KEY = 'merchant_arabic_names';
   const [merchants, setMerchants] = useState<Merchant[]>([]);
+  const [arabicNames, setArabicNames] = useState<Record<string, string>>(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? sessionStorage.getItem(SESSION_KEY) : null;
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
@@ -50,12 +57,33 @@ export default function MerchantsPage() {
     setError(null);
     try {
       const res = await merchantsAPI.list();
-      setMerchants(res.items || []);
+      const items = res.items || [];
+      setMerchants(items);
+
+      // Merge DB-cached Arabic names
+      const merged: Record<string, string> = { ...arabicNames };
+      items.forEach((m: Merchant) => { if (m.arabic_name) merged[m.merchant_name] = m.arabic_name; });
+      setArabicNames(merged);
+      try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(merged)); } catch { /* quota */ }
+
+      // Translate any missing
+      const untranslated = items.filter((m: Merchant) => !merged[m.merchant_name]).map((m: Merchant) => m.merchant_name);
+      if (untranslated.length > 0) {
+        try {
+          const trans = await merchantsAPI.translate(untranslated);
+          if (Object.keys(trans).length > 0) {
+            const updated = { ...merged, ...trans };
+            setArabicNames(updated);
+            try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(updated)); } catch { /* quota */ }
+          }
+        } catch { /* silent */ }
+      }
     } catch (err: any) {
       setError(err?.response?.data?.message || t('errors.generic'));
     } finally {
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated, t]);
 
   useEffect(() => {
@@ -80,9 +108,11 @@ export default function MerchantsPage() {
     }
   };
 
-  const filtered = merchants.filter((m) =>
-    m.merchant_name.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = merchants.filter((m) => {
+    const q = search.toLowerCase();
+    return m.merchant_name.toLowerCase().includes(q) ||
+      (arabicNames[m.merchant_name] || '').includes(q);
+  });
 
   const expenseTypes = new Set([
     'purchase', 'withdrawal', 'payment',
@@ -214,10 +244,17 @@ export default function MerchantsPage() {
                           </td>
                           <td>
                             <div className="flex items-center gap-2">
-                              <Store size={16} className="text-light" />
-                              <span className="transaction-merchant" style={{ marginBottom: 0 }}>
-                                {merchant.merchant_name}
-                              </span>
+                              <Store size={16} className="text-light" style={{ flexShrink: 0 }} />
+                              <div style={{ lineHeight: 1.3 }}>
+                                <div className="transaction-merchant" style={{ marginBottom: 0, fontWeight: 700 }}>
+                                  {arabicNames[merchant.merchant_name] || merchant.merchant_name}
+                                </div>
+                                {arabicNames[merchant.merchant_name] && (
+                                  <div style={{ fontSize: 11, color: 'var(--text-secondary)', direction: 'ltr', textAlign: 'start' }}>
+                                    {merchant.merchant_name}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </td>
                           <td>
