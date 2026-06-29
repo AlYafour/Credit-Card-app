@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { Plus, Trash2, Edit2, Tag, TrendingUp, Building2, User, HelpCircle, X, Check, RefreshCw } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Plus, Trash2, Edit2, Tag, TrendingUp, Building2, User, HelpCircle, X, Check, RefreshCw, ExternalLink, FileDown } from 'lucide-react';
+import { transactionsAPI } from '../api/transactions';
 import toast from 'react-hot-toast';
 import { merchantGroupsAPI, MerchantGroup, MerchantRule } from '../api/merchant-groups';
 
@@ -140,6 +142,7 @@ function GroupForm({ initial, onSave, onCancel, t }: GroupFormProps) {
 
 export default function BasketsPage() {
   const t = useTranslations('baskets');
+  const router = useRouter();
   const [groups, setGroups] = useState<MerchantGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
@@ -201,6 +204,25 @@ export default function BasketsPage() {
   async function handleRemoveRule(groupId: string, ruleId: string) {
     await merchantGroupsAPI.removeRule(groupId, ruleId);
     load();
+  }
+
+  function handleViewTransactions(groupId: string) {
+    router.push(`/transactions?basket_id=${groupId}`);
+  }
+
+  function handleExportBasket(groupId: string) {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const url = transactionsAPI.exportExcel({ merchant_group_id: groupId });
+    fetch(url, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.blob())
+      .then(blob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `basket-transactions.xlsx`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      })
+      .catch(() => toast.error('Export failed'));
   }
 
   async function handleClassify() {
@@ -337,6 +359,24 @@ export default function BasketsPage() {
                     </div>
 
                     <BudgetBar spent={group.monthly_spent} budget={group.monthly_budget} />
+
+                    {/* Quick actions */}
+                    <div className="flex gap-2 mt-3">
+                      <button
+                        onClick={() => handleViewTransactions(group.id)}
+                        className="flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition-colors"
+                      >
+                        <ExternalLink size={12} />
+                        {t('viewTransactions')}
+                      </button>
+                      <button
+                        onClick={() => handleExportBasket(group.id)}
+                        className="flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition-colors"
+                      >
+                        <FileDown size={12} />
+                        {t('exportBasket')}
+                      </button>
+                    </div>
                   </div>
 
                   {/* Rules section */}

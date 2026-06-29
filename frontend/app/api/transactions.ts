@@ -11,6 +11,7 @@ export const transactionsAPI = {
     transaction_type?: string;
     merchant_name?: string;
     expense_type?: string;
+    merchant_group_id?: string;
     amount_min?: number;
     amount_max?: number;
     sort?: string;
@@ -28,6 +29,7 @@ export const transactionsAPI = {
     transaction_type?: string;
     merchant_name?: string;
     expense_type?: string;
+    merchant_group_id?: string;
   }): string => {
     const base = process.env.NEXT_PUBLIC_API_URL || '';
     const qs = new URLSearchParams();

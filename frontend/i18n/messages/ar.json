@@ -625,7 +625,9 @@
     "noRules": "لم يُضف تجار بعد",
     "companySummary": "مصاريف الشركة",
     "personalSummary": "المصاريف الشخصية",
-    "unclassified": "غير مصنف"
+    "unclassified": "غير مصنف",
+    "viewTransactions": "عرض المعاملات",
+    "exportBasket": "تصدير Excel"
   },
   "cardholders": {
     "title": "حاملو البطاقات",

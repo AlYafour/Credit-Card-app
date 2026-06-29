@@ -1659,6 +1659,10 @@ class TransactionViewSet(viewsets.ModelViewSet):
         if expense_type:
             queryset = queryset.filter(expense_type=expense_type)
 
+        merchant_group_id = self.request.query_params.get('merchant_group_id')
+        if merchant_group_id:
+            queryset = queryset.filter(merchant_group_id=merchant_group_id)
+
         amount_min = self.request.query_params.get('amount_min')
         amount_max = self.request.query_params.get('amount_max')
         if amount_min:
@@ -3171,6 +3175,7 @@ def transactions_export_excel(request):
     txn_type = request.GET.get('transaction_type')
     merchant = request.GET.get('merchant_name')
     expense_type = request.GET.get('expense_type')
+    merchant_group_id = request.GET.get('merchant_group_id')
 
     if card_id:
         qs = qs.filter(card_id=card_id)
@@ -3184,6 +3189,8 @@ def transactions_export_excel(request):
         qs = qs.filter(merchant_name__icontains=merchant)
     if expense_type:
         qs = qs.filter(expense_type=expense_type)
+    if merchant_group_id:
+        qs = qs.filter(merchant_group_id=merchant_group_id)
 
     wb = openpyxl.Workbook()
     ws = wb.active

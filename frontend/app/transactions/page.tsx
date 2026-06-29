@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuthStore } from '@/app/store/authStore';
 import { transactionsAPI, Transaction } from '@/app/api/transactions';
@@ -141,12 +141,16 @@ function ImportModal({
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function TransactionsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isAuthenticated, loadUser } = useAuthStore();
   const { t, isRTL } = useTranslations();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Pre-fill from URL params (e.g. coming from Baskets page)
+  const urlBasketId = searchParams?.get('basket_id') ?? '';
 
   // Filters
   const [selectedCard, setSelectedCard] = useState<string>('all');
@@ -155,10 +159,11 @@ export default function TransactionsPage() {
   const [endDate, setEndDate] = useState('');
   const [merchantSearch, setMerchantSearch] = useState('');
   const [expenseType, setExpenseType] = useState('all');
+  const [basketId, setBasketId] = useState(urlBasketId);
   const [amountMin, setAmountMin] = useState('');
   const [amountMax, setAmountMax] = useState('');
   const [sort, setSort] = useState('-transaction_date');
-  const [showFilters, setShowFilters] = useState(false);
+  const [showFilters, setShowFilters] = useState(!!urlBasketId);
 
   // Selection & delete
   const [selectedTransactions, setSelectedTransactions] = useState<Set<string>>(new Set());
@@ -174,6 +179,7 @@ export default function TransactionsPage() {
     endDate,
     merchantSearch,
     expenseType !== 'all',
+    basketId,
     amountMin,
     amountMax,
     sort !== '-transaction_date',
@@ -197,6 +203,7 @@ export default function TransactionsPage() {
           end_date: endDate || undefined,
           merchant_name: merchantSearch || undefined,
           expense_type: expenseType !== 'all' ? expenseType : undefined,
+          merchant_group_id: basketId || undefined,
           amount_min: amountMin ? Number(amountMin) : undefined,
           amount_max: amountMax ? Number(amountMax) : undefined,
           sort,
@@ -211,7 +218,7 @@ export default function TransactionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, selectedCard, transactionType, startDate, endDate, merchantSearch, expenseType, amountMin, amountMax, sort, t]);
+  }, [isAuthenticated, selectedCard, transactionType, startDate, endDate, merchantSearch, expenseType, basketId, amountMin, amountMax, sort, t]);
 
   useEffect(() => {
     if (isAuthenticated) loadData();
@@ -224,6 +231,7 @@ export default function TransactionsPage() {
     setEndDate('');
     setMerchantSearch('');
     setExpenseType('all');
+    setBasketId('');
     setAmountMin('');
     setAmountMax('');
     setSort('-transaction_date');
@@ -238,6 +246,7 @@ export default function TransactionsPage() {
       end_date: endDate || undefined,
       merchant_name: merchantSearch || undefined,
       expense_type: expenseType !== 'all' ? expenseType : undefined,
+      merchant_group_id: basketId || undefined,
     });
     // Create a temporary link with auth header via fetch
     fetch(url, { headers: { Authorization: `Bearer ${token}` } })

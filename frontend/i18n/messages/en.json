@@ -626,7 +626,9 @@
     "noRules": "No merchants added yet",
     "companySummary": "Company Expenses",
     "personalSummary": "Personal Expenses",
-    "unclassified": "Unclassified"
+    "unclassified": "Unclassified",
+    "viewTransactions": "View Transactions",
+    "exportBasket": "Export Excel"
   },
   "cardholders": {
     "title": "Cardholders",
