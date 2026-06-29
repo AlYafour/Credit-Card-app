@@ -515,13 +515,6 @@ export default function BasketsPage() {
                         </div>
                       </div>
 
-                      {pickerGroupId === group.id && (
-                        <MerchantPicker
-                          existingNames={group.rules.map(r => r.merchant_name)}
-                          onAdd={names => handleAddRules(group.id, names)}
-                          onClose={() => setPickerGroupId(null)}
-                        />
-                      )}
 
                       {(expandedId === group.id || group.rules.length <= 4) && (
                         group.rules.length === 0 ? (
@@ -551,6 +544,18 @@ export default function BasketsPage() {
           </div>
         )}
       </div>
+
+      {/* ── Merchant Picker — rendered at top level so fixed positioning works ── */}
+      {pickerGroupId && (() => {
+        const pickerGroup = groups.find(g => g.id === pickerGroupId);
+        return (
+          <MerchantPicker
+            existingNames={pickerGroup?.rules.map(r => r.merchant_name) ?? []}
+            onAdd={names => handleAddRules(pickerGroupId, names)}
+            onClose={() => setPickerGroupId(null)}
+          />
+        );
+      })()}
     </Layout>
   );
 }
