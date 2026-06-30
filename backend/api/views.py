@@ -2541,7 +2541,7 @@ def chat_send(request):
 {json.dumps(cards_context, ensure_ascii=False, default=str)}
 
 ### تحليل الإنفاق:
-- أعلى الفئات (كل الوقت): {json.dumps([{{'category': r['category'] or 'Other', 'total': round(float(r['total']),2), 'count': r['cnt']}} for r in category_totals], default=str)}
+- أعلى الفئات (كل الوقت): {json.dumps([{'category': r['category'] or 'Other', 'total': round(float(r['total']),2), 'count': r['cnt']} for r in category_totals], default=str)}
 - الاتجاه الشهري (6 أشهر): {json.dumps(sorted(monthly_map.values(), key=lambda x: x['month']), default=str)}
 
 ### الكشوفات المستوردة ({len(statements_context)}):
