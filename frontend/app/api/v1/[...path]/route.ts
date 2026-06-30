@@ -1,5 +1,6 @@
 // Allow large payloads for card image scanning (base64 images up to ~15MB)
-export const maxDuration = 60;
+// 300s needed for PDF chat: pre-extraction (~55s) + Claude response (~15s) + retries
+export const maxDuration = 300;
 
 const BACKEND = process.env.BACKEND_URL || 'http://127.0.0.1:8000';
 
