@@ -263,6 +263,8 @@ class CardUpdateSerializer(serializers.ModelSerializer):
 
 
 class TransactionSerializer(serializers.ModelSerializer):
+    # Declared explicitly so we can normalize lowercase legacy values before choices validation
+    transaction_type = serializers.CharField(max_length=50)
     card_id = serializers.UUIDField(required=False, allow_null=True)
     merchant_group_id = serializers.UUIDField(required=False, allow_null=True, write_only=True)
     project_id = serializers.UUIDField(required=False, allow_null=True, write_only=True)
@@ -328,6 +330,20 @@ class TransactionSerializer(serializers.ModelSerializer):
             data['card_id'] = None
         return data
     
+    def validate_transaction_type(self, value):
+        """Accept legacy lowercase types and normalize to canonical uppercase values."""
+        _TYPE_MAP = {
+            'purchase': 'PURCHASE', 'payment': 'CARD_PAYMENT', 'refund': 'REFUND',
+            'withdrawal': 'CASH_WITHDRAWAL', 'transfer': 'TRANSFER', 'deposit': 'WALLET_TOPUP',
+            'cash_advance': 'CASH_ADVANCE', 'fee': 'BANK_FEE', 'interest': 'FINANCE_CHARGE',
+            'cashback': 'CASHBACK', 'reward': 'REWARD_CREDIT',
+        }
+        normalized = _TYPE_MAP.get(value, value.upper() if value else value)
+        valid = {t[0] for t in self.Meta.model.TRANSACTION_TYPES}
+        if normalized not in valid:
+            raise serializers.ValidationError(f'"{value}" is not a valid transaction type.')
+        return normalized
+
     def validate_amount(self, value):
         if value is not None and value <= 0:
             raise serializers.ValidationError('Amount must be greater than zero')

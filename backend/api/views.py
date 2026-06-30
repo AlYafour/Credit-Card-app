@@ -335,7 +335,7 @@ class CardViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance, context={'reveal': reveal})
         return Response(serializer.data)
     
-    def update(self, request, pk=None):
+    def update(self, request, pk=None, partial=False):
         instance = self.get_object()
         serializer = CardUpdateSerializer(instance, data=request.data, partial=True)
         if serializer.is_valid():
@@ -938,21 +938,24 @@ class CardViewSet(viewsets.ModelViewSet):
         if category_filter:
             txns = txns.filter(category__iexact=category_filter)
 
-        purchase_types = ['purchase', 'withdrawal']
+        purchase_types = ['PURCHASE', 'CASH_WITHDRAWAL', 'CASH_ADVANCE', 'QUASI_CASH']
 
         total_purchases = txns.filter(transaction_type__in=purchase_types).aggregate(t=Sum('amount'))['t'] or 0
-        total_payments  = txns.filter(transaction_type='payment').aggregate(t=Sum('amount'))['t'] or 0
-        total_refunds   = txns.filter(transaction_type='refund').aggregate(t=Sum('amount'))['t'] or 0
+        total_payments  = txns.filter(transaction_type='CARD_PAYMENT').aggregate(t=Sum('amount'))['t'] or 0
+        total_refunds   = txns.filter(transaction_type__in=['REFUND', 'REVERSAL', 'CHARGEBACK']).aggregate(t=Sum('amount'))['t'] or 0
+
+        spend_types = purchase_types + ['BANK_FEE', 'FINANCE_CHARGE', 'FOREIGN_EXCHANGE_FEE',
+                                         'INSTALLMENT_PRINCIPAL', 'BALANCE_TRANSFER', 'WALLET_TOPUP']
 
         by_category = list(
-            txns.filter(transaction_type__in=purchase_types)
+            txns.filter(transaction_type__in=spend_types)
             .values('category')
             .annotate(total=Sum('amount'), count=Count('id'))
             .order_by('-total')[:15]
         )
 
         by_card_qs = list(
-            txns.filter(transaction_type__in=purchase_types)
+            txns.filter(transaction_type__in=spend_types)
             .values('card__id', 'card__card_name', 'card__bank_name',
                     'card__card_last_four', 'card__color_hex',
                     'card__points_earn_rate', 'card__points_value_fils')
@@ -974,11 +977,11 @@ class CardViewSet(viewsets.ModelViewSet):
             key = row['month'].strftime('%Y-%m')
             if key not in monthly_map:
                 monthly_map[key] = {'month': key, 'purchases': 0.0, 'payments': 0.0, 'refunds': 0.0}
-            if row['transaction_type'] in purchase_types:
+            if row['transaction_type'] in spend_types:
                 monthly_map[key]['purchases'] += float(row['total'])
-            elif row['transaction_type'] == 'payment':
+            elif row['transaction_type'] == 'CARD_PAYMENT':
                 monthly_map[key]['payments'] += float(row['total'])
-            elif row['transaction_type'] == 'refund':
+            elif row['transaction_type'] in ('REFUND', 'REVERSAL', 'CHARGEBACK', 'CASHBACK', 'REWARD_CREDIT'):
                 monthly_map[key]['refunds'] += float(row['total'])
         monthly = sorted(monthly_map.values(), key=lambda x: x['month'])
 
@@ -1484,7 +1487,21 @@ class CardViewSet(viewsets.ModelViewSet):
                 logger.warning('Statement import: failed to save file: %s', str(fe))
 
         # Bulk create transactions
-        VALID_TYPES = {'purchase', 'payment', 'refund', 'withdrawal', 'transfer', 'deposit'}
+        # Map frontend/AI lowercase type names → canonical uppercase model values
+        TYPE_MAP = {
+            'purchase': 'PURCHASE',
+            'payment': 'CARD_PAYMENT',
+            'refund': 'REFUND',
+            'withdrawal': 'CASH_WITHDRAWAL',
+            'transfer': 'TRANSFER',
+            'deposit': 'WALLET_TOPUP',
+            'cash_advance': 'CASH_ADVANCE',
+            'fee': 'BANK_FEE',
+            'interest': 'FINANCE_CHARGE',
+            'cashback': 'CASHBACK',
+            'reward': 'REWARD_CREDIT',
+        }
+        VALID_UPPERCASE = set(t[0] for t in Transaction.TRANSACTION_TYPES)
         created_txns = 0
         skipped_txns = 0
 
@@ -1500,9 +1517,8 @@ class CardViewSet(viewsets.ModelViewSet):
                 if amount <= 0:
                     continue
 
-                txn_type = txn_data.get('type', 'purchase')
-                if txn_type not in VALID_TYPES:
-                    txn_type = 'purchase'
+                raw_type = (txn_data.get('type') or 'purchase').strip().lower()
+                txn_type = TYPE_MAP.get(raw_type) or (raw_type.upper() if raw_type.upper() in VALID_UPPERCASE else 'PURCHASE')
 
                 currency = txn_data.get('currency') or (card.balance_currency if card else 'AED')
                 merchant = (txn_data.get('merchant') or txn_data.get('description') or '')[:255]
@@ -1696,7 +1712,11 @@ class TransactionViewSet(viewsets.ModelViewSet):
         if end_date:
             queryset = queryset.filter(transaction_date__lte=end_date)
         if transaction_type:
-            queryset = queryset.filter(transaction_type=transaction_type)
+            # Accept both legacy lowercase ('purchase') and canonical uppercase ('PURCHASE')
+            _TM = {'purchase': 'PURCHASE', 'payment': 'CARD_PAYMENT', 'refund': 'REFUND',
+                   'withdrawal': 'CASH_WITHDRAWAL', 'transfer': 'TRANSFER', 'deposit': 'WALLET_TOPUP',
+                   'cash_advance': 'CASH_ADVANCE', 'fee': 'BANK_FEE'}
+            queryset = queryset.filter(transaction_type=_TM.get(transaction_type, transaction_type.upper()))
 
         merchant_name = self.request.query_params.get('merchant_name')
         if merchant_name:
