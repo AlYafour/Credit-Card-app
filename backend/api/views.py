@@ -1,6 +1,6 @@
 import csv
 import json
-from io import StringIO
+from io import StringIO, BytesIO
 from django.conf import settings as django_settings
 from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes, throttle_classes
@@ -2322,6 +2322,36 @@ def chat_send(request):
             image_mime = None
             image_b64 = None
 
+    # If PDF is password-protected, try to decrypt using password found in user message
+    if image_mime == 'application/pdf' and image_b64:
+        import base64 as _b64_mod, re as _re
+        try:
+            raw_pdf = _b64_mod.b64decode(image_b64)
+            # Extract candidate passwords (sequences of 4+ digits or quoted strings)
+            passwords = _re.findall(r'\b\d{4,}\b|["\']([^"\']{4,})["\']', user_message)
+            passwords = [p for p in passwords if p]
+            import pikepdf
+            try:
+                pikepdf.open(io.BytesIO(raw_pdf))  # try without password first
+            except pikepdf._core.PasswordError:
+                decrypted = None
+                for pwd in passwords:
+                    try:
+                        pdf_obj = pikepdf.open(io.BytesIO(raw_pdf), password=pwd)
+                        buf = io.BytesIO()
+                        pdf_obj.save(buf)
+                        decrypted = buf.getvalue()
+                        break
+                    except Exception:
+                        continue
+                if decrypted:
+                    image_b64 = _b64_mod.b64encode(decrypted).decode('utf-8')
+                    logger.info('chat_send: PDF decrypted successfully')
+                else:
+                    logger.warning('chat_send: could not decrypt PDF — no valid password found in message')
+        except Exception as pdf_err:
+            logger.warning('chat_send: PDF pre-processing error: %s', pdf_err)
+
     # Get or create session
     if session_id:
         try:
@@ -2670,13 +2700,18 @@ def chat_send(request):
             claude_msgs = [{'role': m['role'], 'content': m['content']} for m in conversation]
             # Build user content (text + optional image)
             if image_b64 and image_mime:
-                user_content = [
-                    {'type': 'text', 'text': user_message},
-                    {'type': 'image', 'source': {
+                is_pdf = image_mime == 'application/pdf'
+                file_block = {
+                    'type': 'document' if is_pdf else 'image',
+                    'source': {
                         'type': 'base64',
                         'media_type': image_mime,
                         'data': image_b64,
-                    }},
+                    },
+                }
+                user_content = [
+                    {'type': 'text', 'text': user_message},
+                    file_block,
                 ]
                 claude_msgs.append({'role': 'user', 'content': user_content})
             else:
