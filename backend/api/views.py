@@ -473,7 +473,7 @@ class CardViewSet(viewsets.ModelViewSet):
         if not response_text and google_key:
             gemini_url = (
                 'https://generativelanguage.googleapis.com/v1beta/'
-                'models/gemini-2.0-flash:generateContent'
+                'models/gemini-2.5-flash:generateContent'
                 f'?key={google_key}'
             )
             gemini_body = {
@@ -696,7 +696,7 @@ class CardViewSet(viewsets.ModelViewSet):
             try:
                 gemini_url = (
                     'https://generativelanguage.googleapis.com/v1beta/'
-                    f'models/gemini-2.0-flash:generateContent?key={google_key}'
+                    f'models/gemini-2.5-flash:generateContent?key={google_key}'
                 )
                 gemini_body = {
                     'contents': [{'parts': [
@@ -2046,7 +2046,7 @@ def _call_ai_translate(prompt: str, google_key: str, anthropic_key: str) -> dict
     if google_key:
         try:
             url = ('https://generativelanguage.googleapis.com/v1beta/'
-                   f'models/gemini-2.0-flash:generateContent?key={google_key}')
+                   f'models/gemini-2.5-flash:generateContent?key={google_key}')
             body = _j.dumps({'contents': [{'parts': [{'text': prompt}]}],
                              'generationConfig': {'temperature': 0.1, 'maxOutputTokens': 4096}}).encode()
             req = urllib.request.Request(url, data=body, headers={'Content-Type': 'application/json'})
@@ -2650,7 +2650,7 @@ def chat_send(request):
     if google_key:
         gemini_url = (
             'https://generativelanguage.googleapis.com/v1beta/'
-            'models/gemini-2.0-flash:generateContent'
+            'models/gemini-2.5-flash:generateContent'
             f'?key={google_key}'
         )
         gemini_contents = [
