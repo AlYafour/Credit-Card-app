@@ -2311,6 +2311,10 @@ def chat_send(request):
     if not user_message:
         return Response({'error': 'Message is required'}, status=status.HTTP_400_BAD_REQUEST)
 
+    # Get API keys early (needed in PDF pre-processing below)
+    anthropic_key = getattr(django_settings, 'ANTHROPIC_API_KEY', '')
+    google_key = getattr(django_settings, 'GOOGLE_API_KEY', '')
+
     # Parse image data URL if provided (format: data:<mime>;base64,<data>)
     image_mime = None
     image_b64 = None
@@ -2324,7 +2328,7 @@ def chat_send(request):
 
     # If PDF is password-protected, try to decrypt using password found in user message
     if image_mime == 'application/pdf' and image_b64:
-        import base64 as _b64_mod, re as _re
+        import base64 as _b64_mod, re as _re, io as _io_mod
         try:
             raw_pdf = _b64_mod.b64decode(image_b64)
             # Extract candidate passwords: 4+ digit sequences + quoted strings
@@ -2333,13 +2337,13 @@ def chat_send(request):
             passwords = list(dict.fromkeys(digit_pwds + quoted_pwds))
             import pikepdf
             try:
-                pikepdf.open(io.BytesIO(raw_pdf))  # try without password first
+                pikepdf.open(_io_mod.BytesIO(raw_pdf))  # try without password first
             except pikepdf.PasswordError:
                 decrypted = None
                 for pwd in passwords:
                     try:
-                        pdf_obj = pikepdf.open(io.BytesIO(raw_pdf), password=pwd)
-                        buf = io.BytesIO()
+                        pdf_obj = pikepdf.open(_io_mod.BytesIO(raw_pdf), password=pwd)
+                        buf = _io_mod.BytesIO()
                         pdf_obj.save(buf)
                         decrypted = buf.getvalue()
                         break
@@ -2692,8 +2696,7 @@ def chat_send(request):
 - عند وجود كشف حساب: استخرج جميع المعاملات تلقائياً واعرض ملخصاً قبل الإضافة"""
 
     ai_response = None
-    google_key = getattr(django_settings, 'GOOGLE_API_KEY', '')
-    anthropic_key = getattr(django_settings, 'ANTHROPIC_API_KEY', '')
+    # (anthropic_key and google_key already set near top of function)
 
     # Try Gemini first
     if google_key:
