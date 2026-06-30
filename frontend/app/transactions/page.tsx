@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/app/store/authStore';
 import { transactionsAPI, Transaction } from '@/app/api/transactions';
 import { cardsAPI, Card } from '@/app/api/cards';
+import { merchantsAPI } from '@/app/api/merchants';
 import Layout from '@/components/Layout';
 import { useTranslations } from '@/lib/i18n';
 import { translateCategory } from '@/lib/utils';
@@ -154,6 +155,7 @@ export default function TransactionsPage() {
   const { t, locale, isRTL } = useTranslations();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
+  const [merchantsList, setMerchantsList] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -216,7 +218,7 @@ export default function TransactionsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [cardsRes, txnsRes] = await Promise.all([
+      const [cardsRes, txnsRes, merchantsRes] = await Promise.all([
         cardsAPI.list().then(r => r.items || []),
         transactionsAPI.list({
           card_id: selectedCard !== 'all' ? selectedCard : undefined,
@@ -235,11 +237,13 @@ export default function TransactionsPage() {
           per_page: 50,
           include_deleted: includeDeleted || undefined,
         }),
+        merchantsAPI.list().then(r => (r.items || []).sort((a, b) => b.transaction_count - a.transaction_count).map(m => m.merchant_name)).catch(() => []),
       ]);
       setCards(cardsRes);
       setTransactions(txnsRes.items || []);
       setTotalPages(txnsRes.total_pages || 1);
       setTotalItems(txnsRes.total || 0);
+      if (merchantsRes.length > 0) setMerchantsList(merchantsRes);
     } catch (err: any) {
       setError(err?.response?.data?.message || t('errors.generic'));
       setTransactions([]);
@@ -520,26 +524,22 @@ export default function TransactionsPage() {
                 />
               </div>
 
-              {/* Merchant search */}
+              {/* Merchant dropdown */}
               <div className="filter-item filter-item-wide">
                 <label className="filter-label">
                   <Search size={13} />
                   {t('transactions.merchantSearch')}
                 </label>
-                <div className="filter-search-wrap">
-                  <input
-                    type="text"
-                    className="filter-input"
-                    placeholder={t('transactions.merchantSearch')}
-                    value={merchantSearch}
-                    onChange={e => setMerchantSearch(e.target.value)}
-                  />
-                  {merchantSearch && (
-                    <button className="filter-clear-btn" onClick={() => setMerchantSearch('')}>
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
+                <select
+                  className="filter-select"
+                  value={merchantSearch}
+                  onChange={e => { setMerchantSearch(e.target.value); setPage(1); }}
+                >
+                  <option value="">{locale === 'ar' ? 'جميع التجار' : 'All Merchants'}</option>
+                  {merchantsList.map(name => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
+                </select>
               </div>
 
               {/* Category filter */}
