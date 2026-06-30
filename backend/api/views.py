@@ -2833,6 +2833,11 @@ def chat_send(request):
                     card_obj = user_cards.filter(card_last_four=card_last_four).first()
 
                 txn_type = txn_data.get('transaction_type', 'PURCHASE').upper()
+                _raw_date = txn_data.get('transaction_date', '')
+                try:
+                    _txn_date = timezone.make_aware(datetime.strptime(str(_raw_date)[:10], '%Y-%m-%d'))
+                except (ValueError, TypeError):
+                    _txn_date = timezone.now()
                 Transaction.objects.create(
                     user=request.user,
                     card=card_obj,
@@ -2842,7 +2847,7 @@ def chat_send(request):
                     merchant_name=txn_data.get('merchant_name', ''),
                     category=txn_data.get('category', 'Other'),
                     description=txn_data.get('description', ''),
-                    transaction_date=txn_data.get('transaction_date', timezone.now().strftime('%Y-%m-%d')),
+                    transaction_date=_txn_date,
                 )
 
                 # Update card balance if applicable
@@ -3029,6 +3034,11 @@ def chat_send(request):
                     per_card_l4 = td.get('card_last_four', card_last_four)
                     per_card = user_cards.filter(card_last_four=per_card_l4).first() if per_card_l4 else card_obj
                     txn_type = td.get('transaction_type', 'PURCHASE').upper()
+                    _raw_td = td.get('transaction_date', '')
+                    try:
+                        _td_date = timezone.make_aware(datetime.strptime(str(_raw_td)[:10], '%Y-%m-%d'))
+                    except (ValueError, TypeError):
+                        _td_date = timezone.now()
                     Transaction.objects.create(
                         user=request.user,
                         card=per_card,
@@ -3038,7 +3048,7 @@ def chat_send(request):
                         merchant_name=td.get('merchant_name', ''),
                         category=td.get('category', 'Other'),
                         description=td.get('description', ''),
-                        transaction_date=td.get('transaction_date', timezone.now().strftime('%Y-%m-%d')),
+                        transaction_date=_td_date,
                     )
                     added += 1
                 actions_performed.append({'type': 'bulk_transactions_added', 'count': added, 'card': card_last_four})
