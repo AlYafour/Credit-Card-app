@@ -2365,7 +2365,6 @@ def chat_send(request):
         try:
             import anthropic as _anth_ext
             import re as _re_ext
-            _ext_client = _anth_ext.Anthropic(api_key=anthropic_key)
             _ext_prompt = (
                 'You are a bank statement parser. Extract ALL transactions from this PDF.\n'
                 'Return ONLY valid JSON (no markdown fences), exactly this structure:\n'
@@ -2374,7 +2373,8 @@ def chat_send(request):
                 '"transactions":[{"date":"YYYY-MM-DD","merchant":"","amount":0.00,'
                 '"type":"purchase","currency":"AED","category":""}]}'
             )
-            _ext_msg = _anth_ext.Anthropic(api_key=anthropic_key).messages.create(
+            _ext_client = _anth_ext.Anthropic(api_key=anthropic_key, timeout=90.0)
+            _ext_msg = _ext_client.messages.create(
                 model='claude-sonnet-4-6', max_tokens=8192,
                 messages=[{'role': 'user', 'content': [
                     {'type': 'document', 'source': {'type': 'base64', 'media_type': 'application/pdf', 'data': image_b64}},
@@ -2772,7 +2772,7 @@ def chat_send(request):
     if not ai_response and anthropic_key:
         try:
             import anthropic
-            client = anthropic.Anthropic(api_key=anthropic_key)
+            client = anthropic.Anthropic(api_key=anthropic_key, timeout=90.0)
             claude_msgs = [{'role': m['role'], 'content': m['content']} for m in conversation]
             # Build user content (text + optional image)
             is_pdf_request = bool(image_b64 and image_mime == 'application/pdf')
