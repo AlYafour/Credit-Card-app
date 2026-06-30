@@ -1629,7 +1629,7 @@ def statement_transactions(request, statement_id):
 @permission_classes([IsAuthenticated])
 def statement_file(request, statement_id):
     """Serve the original uploaded file for a statement."""
-    from django.http import FileResponse, Http404
+    from django.http import FileResponse, HttpResponseRedirect, Http404
     from django.core.files.storage import default_storage
     from .models import Statement as _Statement
 
@@ -1641,11 +1641,19 @@ def statement_file(request, statement_id):
     if not stmt.file_path:
         raise Http404
 
-    if not default_storage.exists(stmt.file_path):
-        raise Http404
+    # Cloudinary (and any cloud storage): redirect to CDN URL
+    if default_storage.__class__.__module__.startswith('cloudinary'):
+        if not default_storage.exists(stmt.file_path):
+            raise Http404
+        return HttpResponseRedirect(default_storage.url(stmt.file_path))
 
+    # Local filesystem fallback
+    import os as _os
+    abs_path = _os.path.join(django_settings.MEDIA_ROOT, stmt.file_path)
+    if not _os.path.exists(abs_path):
+        raise Http404
     content_type = stmt.file_type or 'application/octet-stream'
-    fh = default_storage.open(stmt.file_path, 'rb')
+    fh = open(abs_path, 'rb')
     response = FileResponse(fh, content_type=content_type)
     safe_name = (stmt.file_name or 'statement').replace('"', '')
     response['Content-Disposition'] = f'inline; filename="{safe_name}"'

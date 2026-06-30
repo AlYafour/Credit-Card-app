@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     'corsheaders',
     'api',
     'drf_spectacular',
+    'cloudinary',
+    'cloudinary_storage',
 ]
 
 MIDDLEWARE = [
@@ -153,28 +155,17 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-USE_S3 = config('USE_S3', default='False', cast=bool)
+USE_CLOUDINARY = config('USE_CLOUDINARY', default='False', cast=bool)
 
-if USE_S3:
-    AWS_ACCESS_KEY_ID     = config('AWS_ACCESS_KEY_ID')
-    AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
-    AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME')
-    AWS_S3_REGION_NAME    = config('AWS_S3_REGION_NAME', default='auto')
-    AWS_S3_ENDPOINT_URL   = config('AWS_S3_ENDPOINT_URL', default=None)  # Cloudflare R2 or custom
-    AWS_S3_FILE_OVERWRITE = False
-    AWS_DEFAULT_ACL       = None
-    AWS_S3_CUSTOM_DOMAIN  = config('AWS_S3_CUSTOM_DOMAIN', default=None)
-    AWS_QUERYSTRING_AUTH  = config('AWS_QUERYSTRING_AUTH', default='True', cast=bool)
-    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
-
-    if AWS_S3_CUSTOM_DOMAIN:
-        MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
-    else:
-        MEDIA_URL = f'https://{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com/'
-
+if USE_CLOUDINARY:
+    CLOUDINARY_STORAGE = {
+        'CLOUD_NAME': config('CLOUDINARY_CLOUD_NAME'),
+        'API_KEY':    config('CLOUDINARY_API_KEY'),
+        'API_SECRET': config('CLOUDINARY_API_SECRET'),
+    }
     STORAGES = {
         'default': {
-            'BACKEND': 'storages.backends.s3boto3.S3Boto3Storage',
+            'BACKEND': 'cloudinary_storage.storage.RawMediaCloudinaryStorage',
         },
         'staticfiles': {
             'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
