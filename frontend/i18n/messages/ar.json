@@ -465,6 +465,7 @@
     "emailPlaceholder": "أدخل بريدك الإلكتروني",
     "password": "كلمة المرور",
     "passwordPlaceholder": "أدخل كلمة المرور",
+    "rememberMe": "تذكرني",
     "forgotPassword": "نسيت كلمة المرور؟",
     "forgotPasswordSubtitle": "إعادة تعيين كلمة المرور",
     "forgotPasswordSuccessSubtitle": "تحقق من بريدك الوارد",

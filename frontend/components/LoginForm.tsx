@@ -17,6 +17,10 @@ export default function LoginForm() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return localStorage.getItem('remember_me') === 'true';
+  });
   const [biometricAvailable, setBiometricAvailable] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
 
@@ -29,6 +33,8 @@ export default function LoginForm() {
 
   useEffect(() => {
     authAPI.checkBiometricSupport().then(setBiometricAvailable);
+    const saved = localStorage.getItem('remembered_email');
+    if (saved) setEmail(saved);
   }, []);
 
   const handleBiometric = async () => {
@@ -53,6 +59,13 @@ export default function LoginForm() {
     setError('');
     try {
       await login(email, password);
+      if (rememberMe) {
+        localStorage.setItem('remembered_email', email);
+        localStorage.setItem('remember_me', 'true');
+      } else {
+        localStorage.removeItem('remembered_email');
+        localStorage.removeItem('remember_me');
+      }
       router.push('/dashboard');
     } catch (err: unknown) {
       const loginFailedMsg = t('errors.loginFailed');
@@ -234,7 +247,16 @@ export default function LoginForm() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 4, marginTop: -8 }}>
+          <div className="auth-remember-row">
+            <label className="auth-remember-label">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="auth-remember-checkbox"
+              />
+              <span>{t('auth.rememberMe') || 'Remember me'}</span>
+            </label>
             <button
               type="button"
               onClick={openForgotPassword}

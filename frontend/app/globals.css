@@ -10619,3 +10619,50 @@ table tbody tr:hover {
   opacity: 0.75;
   text-decoration: underline;
 }
+
+/* ── Remember me row ── */
+.auth-remember-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: -4px;
+  margin-bottom: 2px;
+}
+
+.auth-remember-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.auth-remember-label:hover {
+  color: var(--text);
+}
+
+.auth-remember-checkbox {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px;
+  border: 2px solid var(--border-strong) !important;
+  border-radius: 4px !important;
+  background: var(--bg) !important;
+  cursor: pointer;
+  accent-color: var(--primary);
+  padding: 0 !important;
+  box-shadow: none !important;
+  transition: border-color 0.15s ease;
+}
+
+.auth-remember-checkbox:checked {
+  border-color: var(--primary) !important;
+  accent-color: var(--primary);
+}
+
+.auth-remember-checkbox:focus {
+  box-shadow: 0 0 0 3px rgba(194,156,53,0.18) !important;
+  border-color: var(--primary) !important;
+}
