@@ -10347,3 +10347,275 @@ html[dir="rtl"] .credit-card-error {
   background: rgba(184,150,62,0.12);
   border-color: var(--primary, #b8963e);
 }
+
+/* ============================================
+   PROFESSIONAL POLISH — GLOBAL DECORATIVE TOUCHES
+   ============================================ */
+
+/* ── Gold accent bar at the very top of every page ── */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(
+    90deg,
+    var(--primary-dark)  0%,
+    var(--primary)       30%,
+    var(--primary-light) 60%,
+    var(--primary)       80%,
+    var(--primary-dark)  100%
+  );
+  z-index: 100000;
+  pointer-events: none;
+}
+
+/* ── Auth page: rich gradient background with soft blobs ── */
+.auth-page {
+  background:
+    radial-gradient(ellipse at 15% 15%, rgba(194,156,53,0.07) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 85%, rgba(194,156,53,0.05) 0%, transparent 55%),
+    var(--bg-secondary);
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-page::before {
+  content: '';
+  position: absolute;
+  top: -150px;
+  right: -150px;
+  width: 450px;
+  height: 450px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(194,156,53,0.09) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.auth-page::after {
+  content: '';
+  position: absolute;
+  bottom: -120px;
+  left: -120px;
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(194,156,53,0.06) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ── Auth card: gold top accent + entrance animation ── */
+.auth-card {
+  border-top: 3px solid var(--primary) !important;
+  animation: auth-card-enter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  position: relative;
+  z-index: 1;
+}
+
+@keyframes auth-card-enter {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* ── Auth logo: gentle floating animation ── */
+.auth-logo {
+  animation: auth-logo-float 4s ease-in-out infinite;
+}
+
+@keyframes auth-logo-float {
+  0%, 100% { transform: translateY(0);    box-shadow: 0 4px 12px rgba(194,156,53,0.25); }
+  50%       { transform: translateY(-5px); box-shadow: 0 10px 24px rgba(194,156,53,0.35); }
+}
+
+/* ── Input & form fields: gold focus ring ── */
+.form-input:focus,
+.input:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(194,156,53,0.18) !important;
+  outline: none !important;
+}
+
+/* ── Buttons: active press scale ── */
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* ── Cards: smooth hover lift (interactive cards only) ── */
+.card:not(.card-table):not(.ch-card):not(.basket-card) {
+  transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+}
+.card:not(.card-table):not(.ch-card):not(.basket-card):hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ── Page content: fade-in on navigation ── */
+.content-wrapper {
+  animation: page-fade-in 0.3s ease both;
+}
+
+@keyframes page-fade-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* ── Page header: gold accent line beneath title ── */
+.page-header-text h1 {
+  position: relative;
+  padding-bottom: 10px;
+}
+
+.page-header-text h1::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 36px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--primary), transparent);
+  border-radius: 2px;
+}
+
+[dir="rtl"] .page-header-text h1::after {
+  left: auto;
+  right: 0;
+  background: linear-gradient(270deg, var(--primary), transparent);
+}
+
+/* ── Table rows: subtle gold hover ── */
+table tbody tr {
+  transition: background 0.15s ease;
+}
+
+table tbody tr:hover {
+  background: var(--primary-bg) !important;
+}
+
+/* ── Summary / stat cards: hover glow ── */
+.summary-card:hover,
+.basket-summary-card:hover,
+.ch-summary-card:hover {
+  border-color: rgba(194,156,53,0.3) !important;
+  box-shadow: 0 6px 20px rgba(194,156,53,0.12) !important;
+  transform: translateY(-2px);
+  transition: all 0.25s ease;
+}
+
+/* ── Sidebar active item: gold left glow ── */
+.sidebar-nav-item.active::before,
+.nav-item.active::before {
+  background: var(--primary);
+  box-shadow: 0 0 8px rgba(194,156,53,0.6);
+}
+
+/* ── Dark mode compatibility ── */
+[data-theme="dark"] .auth-page {
+  background:
+    radial-gradient(ellipse at 15% 15%, rgba(194,156,53,0.06) 0%, transparent 55%),
+    radial-gradient(ellipse at 85% 85%, rgba(194,156,53,0.04) 0%, transparent 55%),
+    var(--bg-secondary);
+}
+
+/* ── Scroll indicator on table containers ── */
+.card-table {
+  position: relative;
+}
+
+.card-table::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 20px;
+  background: linear-gradient(to left, var(--bg), transparent);
+  pointer-events: none;
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+/* ── Section titles: gold underline accent ── */
+.card h3,
+.settings-card-header h3,
+.section-title {
+  position: relative;
+  display: inline-block;
+}
+
+/* ── Spinner / loading state: gold color ── */
+.spinner,
+.spinner::after {
+  border-color: var(--primary-bg) !important;
+  border-top-color: var(--primary) !important;
+}
+
+/* ── Smooth hover on nav links in sidebar ── */
+.sidebar-nav-item,
+.nav-item {
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+/* ── Badge / chip hover glow ── */
+.badge,
+.chip,
+.category-badge {
+  transition: all 0.15s ease;
+}
+
+.category-badge:hover {
+  box-shadow: 0 2px 8px rgba(194,156,53,0.2);
+}
+
+/* ── Alert messages: slide in ── */
+.alert {
+  animation: alert-slide-in 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes alert-slide-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+
+/* ── Modal overlays: smooth backdrop ── */
+.basket-modal-overlay,
+.merchant-picker-overlay {
+  animation: overlay-fade-in 0.2s ease both;
+}
+
+@keyframes overlay-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.basket-modal,
+.merchant-picker {
+  animation: modal-slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes modal-slide-up {
+  from { opacity: 0; transform: translateY(24px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+/* ── Forgot password link ── */
+.auth-forgot-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: 0.85rem;
+  color: var(--primary);
+  font-weight: 500;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.auth-forgot-btn:hover {
+  opacity: 0.75;
+  text-decoration: underline;
+}

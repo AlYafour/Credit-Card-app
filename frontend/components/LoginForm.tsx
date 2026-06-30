@@ -238,7 +238,7 @@ export default function LoginForm() {
             <button
               type="button"
               onClick={openForgotPassword}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.85rem', color: 'var(--primary-color, #6366f1)', textDecoration: 'underline' }}
+              className="auth-forgot-btn"
             >
               {t('auth.forgotPassword') || 'Forgot password?'}
             </button>
