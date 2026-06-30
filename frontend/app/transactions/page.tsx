@@ -530,16 +530,14 @@ export default function TransactionsPage() {
                   <Search size={13} />
                   {t('transactions.merchantSearch')}
                 </label>
-                <select
-                  className="filter-select"
+                <SearchableSelect
                   value={merchantSearch}
-                  onChange={e => { setMerchantSearch(e.target.value); setPage(1); }}
-                >
-                  <option value="">{locale === 'ar' ? 'جميع التجار' : 'All Merchants'}</option>
-                  {merchantsList.map(name => (
-                    <option key={name} value={name}>{name}</option>
-                  ))}
-                </select>
+                  onChange={v => { setMerchantSearch(v); setPage(1); }}
+                  options={[locale === 'ar' ? 'جميع التجار' : 'All Merchants', ...merchantsList]}
+                  optionValues={['', ...merchantsList]}
+                  placeholder={locale === 'ar' ? 'ابحث عن تاجر...' : 'Search merchant...'}
+                  noMatchesText={t('common.noMatches') || 'No matches'}
+                />
               </div>
 
               {/* Category filter */}
@@ -547,35 +545,17 @@ export default function TransactionsPage() {
                 <label className="filter-label">
                   {locale === 'ar' ? 'التصنيف' : 'Category'}
                 </label>
-                <select
-                  className="filter-select"
+                <SearchableSelect
                   value={categoryFilter}
-                  onChange={e => { setCategoryFilter(e.target.value); setPage(1); }}
-                >
-                  <option value="all">{locale === 'ar' ? 'جميع التصنيفات' : 'All Categories'}</option>
-                  <option value="Food">{locale === 'ar' ? 'طعام' : 'Food'}</option>
-                  <option value="Shopping">{locale === 'ar' ? 'تسوق' : 'Shopping'}</option>
-                  <option value="Transport">{locale === 'ar' ? 'مواصلات' : 'Transport'}</option>
-                  <option value="Travel">{locale === 'ar' ? 'سفر' : 'Travel'}</option>
-                  <option value="Fuel">{locale === 'ar' ? 'وقود' : 'Fuel'}</option>
-                  <option value="Utilities">{locale === 'ar' ? 'مرافق' : 'Utilities'}</option>
-                  <option value="Services">{locale === 'ar' ? 'خدمات' : 'Services'}</option>
-                  <option value="Electronics">{locale === 'ar' ? 'إلكترونيات' : 'Electronics'}</option>
-                  <option value="Technology">{locale === 'ar' ? 'تكنولوجيا' : 'Technology'}</option>
-                  <option value="Healthcare">{locale === 'ar' ? 'رعاية صحية' : 'Healthcare'}</option>
-                  <option value="Entertainment">{locale === 'ar' ? 'ترفيه' : 'Entertainment'}</option>
-                  <option value="Education">{locale === 'ar' ? 'تعليم' : 'Education'}</option>
-                  <option value="Telecoms">{locale === 'ar' ? 'اتصالات' : 'Telecoms'}</option>
-                  <option value="Insurance">{locale === 'ar' ? 'تأمين' : 'Insurance'}</option>
-                  <option value="Hotels">{locale === 'ar' ? 'فنادق' : 'Hotels'}</option>
-                  <option value="Government">{locale === 'ar' ? 'جهات حكومية' : 'Government'}</option>
-                  <option value="Charity">{locale === 'ar' ? 'تبرعات' : 'Charity'}</option>
-                  <option value="Subscriptions">{locale === 'ar' ? 'اشتراكات' : 'Subscriptions'}</option>
-                  <option value="Banking">{locale === 'ar' ? 'خدمات بنكية' : 'Banking'}</option>
-                  <option value="Groceries">{locale === 'ar' ? 'بقالة' : 'Groceries'}</option>
-                  <option value="Restaurants">{locale === 'ar' ? 'مطاعم' : 'Restaurants'}</option>
-                  <option value="Other">{locale === 'ar' ? 'أخرى' : 'Other'}</option>
-                </select>
+                  onChange={v => { setCategoryFilter(v); setPage(1); }}
+                  options={locale === 'ar'
+                    ? ['جميع التصنيفات','طعام','تسوق','مواصلات','سفر','وقود','مرافق','خدمات','إلكترونيات','تكنولوجيا','رعاية صحية','ترفيه','تعليم','اتصالات','تأمين','فنادق','جهات حكومية','تبرعات','اشتراكات','خدمات بنكية','بقالة','مطاعم','أخرى']
+                    : ['All Categories','Food','Shopping','Transport','Travel','Fuel','Utilities','Services','Electronics','Technology','Healthcare','Entertainment','Education','Telecoms','Insurance','Hotels','Government','Charity','Subscriptions','Banking','Groceries','Restaurants','Other']
+                  }
+                  optionValues={['all','Food','Shopping','Transport','Travel','Fuel','Utilities','Services','Electronics','Technology','Healthcare','Entertainment','Education','Telecoms','Insurance','Hotels','Government','Charity','Subscriptions','Banking','Groceries','Restaurants','Other']}
+                  placeholder={locale === 'ar' ? 'ابحث عن تصنيف...' : 'Search category...'}
+                  noMatchesText={t('common.noMatches') || 'No matches'}
+                />
               </div>
 
               {/* Amount range */}
@@ -608,12 +588,19 @@ export default function TransactionsPage() {
                   <ChevronDown size={13} />
                   {t('transactions.sortBy')}
                 </label>
-                <select className="filter-select" value={sort} onChange={e => setSort(e.target.value)}>
-                  <option value="-transaction_date">{t('transactions.sortNewest')}</option>
-                  <option value="transaction_date">{t('transactions.sortOldest')}</option>
-                  <option value="-amount">{t('transactions.sortHighest')}</option>
-                  <option value="amount">{t('transactions.sortLowest')}</option>
-                </select>
+                <SearchableSelect
+                  value={sort}
+                  onChange={setSort}
+                  options={[
+                    t('transactions.sortNewest'),
+                    t('transactions.sortOldest'),
+                    t('transactions.sortHighest'),
+                    t('transactions.sortLowest'),
+                  ]}
+                  optionValues={['-transaction_date', 'transaction_date', '-amount', 'amount']}
+                  placeholder={locale === 'ar' ? 'ابحث عن ترتيب...' : 'Search sort...'}
+                  noMatchesText={t('common.noMatches') || 'No matches'}
+                />
               </div>
 
               {/* Approval Status */}
@@ -622,13 +609,20 @@ export default function TransactionsPage() {
                   <CheckCircle size={13} />
                   {t('transactions.approvalStatus')}
                 </label>
-                <select className="filter-select" value={approvalStatus} onChange={e => setApprovalStatus(e.target.value)}>
-                  <option value="all">{t('transactions.allApprovalStatuses')}</option>
-                  <option value="draft">{locale === 'ar' ? 'مسودة' : 'Draft'}</option>
-                  <option value="submitted">{locale === 'ar' ? 'مُرسل' : 'Submitted'}</option>
-                  <option value="approved">{locale === 'ar' ? 'مُوافق عليه' : 'Approved'}</option>
-                  <option value="rejected">{locale === 'ar' ? 'مرفوض' : 'Rejected'}</option>
-                </select>
+                <SearchableSelect
+                  value={approvalStatus}
+                  onChange={setApprovalStatus}
+                  options={[
+                    t('transactions.allApprovalStatuses'),
+                    locale === 'ar' ? 'مسودة' : 'Draft',
+                    locale === 'ar' ? 'مُرسل' : 'Submitted',
+                    locale === 'ar' ? 'مُوافق عليه' : 'Approved',
+                    locale === 'ar' ? 'مرفوض' : 'Rejected',
+                  ]}
+                  optionValues={['all', 'draft', 'submitted', 'approved', 'rejected']}
+                  placeholder={locale === 'ar' ? 'ابحث عن حالة...' : 'Search status...'}
+                  noMatchesText={t('common.noMatches') || 'No matches'}
+                />
               </div>
 
               {/* Recycle Bin toggle */}

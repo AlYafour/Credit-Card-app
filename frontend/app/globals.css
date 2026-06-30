@@ -10867,6 +10867,7 @@ table tbody tr:hover {
   display: flex;
   height: calc(100vh - 0px);
   max-height: 100vh;
+  max-width: 55vw;
   overflow: hidden;
   background: var(--bg);
 }
