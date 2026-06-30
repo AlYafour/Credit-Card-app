@@ -12,6 +12,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me-in-production')
 DEBUG = config('DEBUG', default='False', cast=bool)
 
+if not DEBUG and 'insecure' in SECRET_KEY:
+    raise ValueError('SECRET_KEY must be set to a secure random value in production!')
+
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1,0.0.0.0').split(',')
 
 # Render
@@ -24,9 +27,6 @@ RAILWAY = bool(config('RAILWAY_ENVIRONMENT', default=''))
 if RAILWAY:
     ALLOWED_HOSTS.append('.railway.app')
     ALLOWED_HOSTS.append('.up.railway.app')
-
-if DEBUG:
-    ALLOWED_HOSTS = ['*']
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -245,11 +245,7 @@ if RAILWAY:
 
 CORS_ALLOW_CREDENTIALS = True
 
-# In development, allow all origins; also if CORS_ORIGINS='*'
-if DEBUG or cors_origins_env.strip() == '*':
-    CORS_ALLOW_ALL_ORIGINS = True
-else:
-    CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_ALL_ORIGINS = cors_origins_env.strip() == '*' and DEBUG
 
 # CORS Headers
 CORS_ALLOW_HEADERS = [
@@ -276,12 +272,14 @@ CORS_ALLOW_METHODS = [
 # Encryption settings
 ENCRYPTION_KEY = config('ENCRYPTION_KEY', default='CHANGE-ME-32-byte-key-for-aes256')
 
-# Fail loudly if using default encryption key in production
-if not DEBUG and ENCRYPTION_KEY == 'CHANGE-ME-32-byte-key-for-aes256':
-    raise ValueError(
-        'ENCRYPTION_KEY must be set to a secure value in production! '
-        'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
-    )
+if ENCRYPTION_KEY == 'CHANGE-ME-32-byte-key-for-aes256':
+    if not DEBUG:
+        raise ValueError(
+            'ENCRYPTION_KEY must be set to a secure value in production! '
+            'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
+        )
+    import warnings
+    warnings.warn('ENCRYPTION_KEY is using insecure default — set it before production!', stacklevel=2)
 
 # AI Vision API settings
 ANTHROPIC_API_KEY = config('ANTHROPIC_API_KEY', default='')
