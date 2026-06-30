@@ -126,16 +126,24 @@ export default function StatementPage() {
 
   const addPassword = async () => {
     if (!newBankName.trim() || !newBankPassword.trim()) { toast.error(ar ? 'أدخل اسم البنك وكلمة السر' : 'Enter bank name and password'); return; }
-    await cardsAPI.saveBankPassword(newBankName.trim(), newBankPassword.trim());
-    setSavedPasswords(await cardsAPI.getBankPasswords());
-    setNewBankName(''); setNewBankPassword('');
-    toast.success(ar ? 'تم الحفظ' : 'Saved');
+    try {
+      await cardsAPI.saveBankPassword(newBankName.trim(), newBankPassword.trim());
+      setSavedPasswords(await cardsAPI.getBankPasswords());
+      setNewBankName(''); setNewBankPassword('');
+      toast.success(ar ? 'تم الحفظ' : 'Saved');
+    } catch {
+      toast.error(ar ? 'فشل الحفظ' : 'Failed to save');
+    }
   };
 
   const deletePassword = async (bank: string) => {
-    await cardsAPI.deleteBankPassword(bank);
-    setSavedPasswords(p => p.filter(x => x.bank_name !== bank));
-    toast.success(ar ? 'تم الحذف' : 'Deleted');
+    try {
+      await cardsAPI.deleteBankPassword(bank);
+      setSavedPasswords(p => p.filter(x => x.bank_name !== bank));
+      toast.success(ar ? 'تم الحذف' : 'Deleted');
+    } catch {
+      toast.error(ar ? 'فشل الحذف' : 'Failed to delete');
+    }
   };
 
   // ── Rich file card details ───────────────────────────────────────────────

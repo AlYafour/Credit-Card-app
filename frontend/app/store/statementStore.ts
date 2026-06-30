@@ -109,12 +109,13 @@ export const useStatementStore = create<StatementStore>((set, get) => ({
   },
 
   removeFile: (id) => {
+    const fileIdx = get().files.findIndex(f => f.id === id);
     set(s => ({
       files: s.files.filter(f => f.id !== id),
-      allTransactions: s.allTransactions.filter(t => {
-        const fileIdx = s.files.findIndex(f => f.id === id);
-        return t._fileIndex !== fileIdx;
-      }),
+      // Remove transactions that came from this file
+      allTransactions: fileIdx === -1
+        ? s.allTransactions
+        : s.allTransactions.filter(t => t._fileIndex !== fileIdx),
     }));
   },
 

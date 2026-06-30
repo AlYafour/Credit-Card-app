@@ -1510,6 +1510,8 @@ class CardViewSet(viewsets.ModelViewSet):
                 dup = Transaction.objects.filter(
                     user=request.user, card=card,
                     amount=amount, transaction_type=txn_type,
+                    currency=currency,
+                    merchant_name=merchant or None,
                     transaction_date__date=txn_date.date(),
                 ).first()
                 if dup:
