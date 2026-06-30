@@ -2138,23 +2138,26 @@ def translate_merchants(request):
 class CashEntryViewSet(viewsets.ModelViewSet):
     serializer_class = CashEntrySerializer
     permission_classes = [IsAuthenticated]
-    
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
     def get_queryset(self):
-        return CashEntry.objects.filter(user=self.request.user).order_by('-entry_date')
-    
+        return CashEntry.objects.filter(user=self.request.user, is_deleted=False).order_by('-entry_date')
+
     def destroy(self, request, pk=None):
         instance = self.get_object()
         instance.is_deleted = True
         instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
-    
+
     @action(detail=False, methods=['get'])
     def balance(self, request):
-        entries = CashEntry.objects.filter(user=request.user)
+        entries = CashEntry.objects.filter(user=request.user, is_deleted=False)
         income = entries.filter(entry_type='income').aggregate(Sum('amount'))['amount__sum'] or 0
         expense = entries.filter(entry_type='expense').aggregate(Sum('amount'))['amount__sum'] or 0
         balance = float(income - expense)
-        
+
         return Response({
             'balance': balance,
             'currency': 'AED'
