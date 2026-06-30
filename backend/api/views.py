@@ -2368,161 +2368,168 @@ def chat_send(request):
     from django.db.models import Sum, Count, Max, Min
     from django.db.models.functions import TruncMonth
 
-    user_cards = Card.objects.filter(user=request.user, is_deleted=False)
+    try:
+        user_cards = Card.objects.filter(user=request.user, is_deleted=False)
 
-    # ── Aggregate ALL transactions per card (not just last 50) ──
-    all_txns_qs = Transaction.objects.filter(user=request.user, is_deleted=False)
-    total_count = all_txns_qs.count()
+        # ── Aggregate ALL transactions per card (not just last 50) ──
+        all_txns_qs = Transaction.objects.filter(user=request.user, is_deleted=False)
+        total_count = all_txns_qs.count()
 
-    # Per-card totals
-    card_totals = {}
-    for row in all_txns_qs.values('card_id', 'transaction_type').annotate(total=Sum('amount'), cnt=Count('id')):
-        cid = str(row['card_id']) if row['card_id'] else '__cash__'
-        if cid not in card_totals:
-            card_totals[cid] = {'purchases': 0.0, 'payments': 0.0, 'refunds': 0.0, 'withdrawals': 0.0, 'count': 0}
-        t = row['transaction_type']
-        v = float(row['total'])
-        if t in ('PURCHASE', 'CARD_PAYMENT', 'BALANCE_TRANSFER', 'INSTALLMENT_PRINCIPAL', 'BANK_FEE', 'FINANCE_CHARGE', 'FOREIGN_EXCHANGE_FEE', 'QUASI_CASH', 'PREAUTH_HOLD'):
-            card_totals[cid]['purchases'] += v
-        elif t in ('REFUND', 'CASHBACK', 'REWARD_CREDIT', 'REVERSAL', 'CHARGEBACK', 'ADJUSTMENT', 'PREAUTH_RELEASE'):
-            card_totals[cid]['refunds'] += v
-        elif t in ('CASH_WITHDRAWAL', 'CASH_ADVANCE'):
-            card_totals[cid]['withdrawals'] += v
-        elif t in ('WALLET_TOPUP', 'TRANSFER'):
-            card_totals[cid]['payments'] += v
-        card_totals[cid]['count'] += row['cnt']
+        # Per-card totals
+        card_totals = {}
+        for row in all_txns_qs.values('card_id', 'transaction_type').annotate(total=Sum('amount'), cnt=Count('id')):
+            cid = str(row['card_id']) if row['card_id'] else '__cash__'
+            if cid not in card_totals:
+                card_totals[cid] = {'purchases': 0.0, 'payments': 0.0, 'refunds': 0.0, 'withdrawals': 0.0, 'count': 0}
+            t = row['transaction_type']
+            v = float(row['total'])
+            if t in ('PURCHASE', 'CARD_PAYMENT', 'BALANCE_TRANSFER', 'INSTALLMENT_PRINCIPAL', 'BANK_FEE', 'FINANCE_CHARGE', 'FOREIGN_EXCHANGE_FEE', 'QUASI_CASH', 'PREAUTH_HOLD'):
+                card_totals[cid]['purchases'] += v
+            elif t in ('REFUND', 'CASHBACK', 'REWARD_CREDIT', 'REVERSAL', 'CHARGEBACK', 'ADJUSTMENT', 'PREAUTH_RELEASE'):
+                card_totals[cid]['refunds'] += v
+            elif t in ('CASH_WITHDRAWAL', 'CASH_ADVANCE'):
+                card_totals[cid]['withdrawals'] += v
+            elif t in ('WALLET_TOPUP', 'TRANSFER'):
+                card_totals[cid]['payments'] += v
+            card_totals[cid]['count'] += row['cnt']
 
-    # Per-card latest transaction date
-    card_latest = {
-        str(r['card_id']): r['latest']
-        for r in all_txns_qs.values('card_id').annotate(latest=Max('transaction_date'))
-        if r['card_id']
-    }
-
-    # Category breakdown (all time, top 15)
-    EXPENSE_TYPES = ['PURCHASE', 'CARD_PAYMENT', 'CASH_WITHDRAWAL', 'CASH_ADVANCE',
-                     'BALANCE_TRANSFER', 'INSTALLMENT_PRINCIPAL', 'BANK_FEE',
-                     'FINANCE_CHARGE', 'FOREIGN_EXCHANGE_FEE', 'QUASI_CASH']
-    category_totals = list(
-        all_txns_qs.filter(transaction_type__in=EXPENSE_TYPES)
-        .values('category').annotate(total=Sum('amount'), cnt=Count('id'))
-        .order_by('-total')[:15]
-    )
-
-    # Monthly spending (last 6 months)
-    from datetime import date as _date, timedelta as _td
-    six_ago = _date.today().replace(day=1) - _td(days=180)
-    monthly_data = list(
-        all_txns_qs.filter(transaction_date__date__gte=six_ago)
-        .annotate(month=TruncMonth('transaction_date'))
-        .values('month', 'transaction_type')
-        .annotate(total=Sum('amount'))
-        .order_by('month')
-    )
-    monthly_map: dict = {}
-    for row in monthly_data:
-        key = row['month'].strftime('%Y-%m')
-        if key not in monthly_map:
-            monthly_map[key] = {'month': key, 'purchases': 0.0, 'payments': 0.0, 'refunds': 0.0}
-        t = row['transaction_type']
-        if t in ('PURCHASE', 'CARD_PAYMENT', 'CASH_WITHDRAWAL', 'CASH_ADVANCE',
-                 'BALANCE_TRANSFER', 'INSTALLMENT_PRINCIPAL', 'BANK_FEE',
-                 'FINANCE_CHARGE', 'FOREIGN_EXCHANGE_FEE', 'QUASI_CASH'):
-            monthly_map[key]['purchases'] += float(row['total'])
-        elif t in ('WALLET_TOPUP', 'TRANSFER'):
-            monthly_map[key]['payments'] += float(row['total'])
-        elif t in ('REFUND', 'CASHBACK', 'REWARD_CREDIT', 'REVERSAL', 'CHARGEBACK', 'ADJUSTMENT'):
-            monthly_map[key]['refunds'] += float(row['total'])
-
-    cards_context = []
-    for card in user_cards:
-        cid = str(card.id)
-        ct = card_totals.get(cid, {})
-        net_from_txns = ct.get('purchases', 0) + ct.get('withdrawals', 0) - ct.get('payments', 0) - ct.get('refunds', 0)
-        stored_balance = float(card.current_balance) if card.current_balance else None
-        latest_txn = card_latest.get(cid)
-        card_info = {
-            'id': cid,
-            'name': card.card_name, 'bank': card.bank_name,
-            'type': card.card_type, 'last_four': card.card_last_four,
-            'network': card.card_network,
-            'credit_limit': float(card.credit_limit) if card.credit_limit else None,
-            'stored_balance': stored_balance,
-            'computed_balance_from_transactions': round(net_from_txns, 2),
-            'available_balance': float(card.available_balance) if card.available_balance else None,
-            'currency': card.balance_currency,
-            'payment_due_date': card.payment_due_date,
-            'statement_date': card.statement_date,
-            'minimum_payment': float(card.minimum_payment) if card.minimum_payment else None,
-            'min_payment_pct': float(card.minimum_payment_percentage) if card.minimum_payment_percentage else None,
-            'txn_summary': {
-                'total_purchases': round(ct.get('purchases', 0), 2),
-                'total_withdrawals': round(ct.get('withdrawals', 0), 2),
-                'total_payments': round(ct.get('payments', 0), 2),
-                'total_refunds': round(ct.get('refunds', 0), 2),
-                'transaction_count': ct.get('count', 0),
-                'latest_transaction': latest_txn.strftime('%Y-%m-%d') if latest_txn else None,
-            },
+        # Per-card latest transaction date
+        card_latest = {
+            str(r['card_id']): r['latest']
+            for r in all_txns_qs.values('card_id').annotate(latest=Max('transaction_date'))
+            if r['card_id']
         }
-        if card.card_benefits:
-            try:
-                card_info['benefits'] = json.loads(card.card_benefits)
-            except json.JSONDecodeError:
-                pass
-        cards_context.append(card_info)
 
-    # ALL transactions — compact format to stay within context limits
-    all_txns_list = all_txns_qs.select_related('card').order_by('-transaction_date')
-    txn_context = [
-        f"{t.transaction_date.strftime('%Y-%m-%d') if t.transaction_date else '?'}|{t.transaction_type}|{float(t.amount):.2f}|{t.currency}|{t.merchant_name or ''}|{t.card.card_name if t.card else 'Cash'}|{t.card.card_last_four if t.card else ''}|{t.category or ''}"
-        for t in all_txns_list
-    ]
-    # Last 150 transactions with IDs (for delete/update by AI)
-    recent_txns_with_ids = [
-        {'id': str(t.id), 'date': t.transaction_date.strftime('%Y-%m-%d') if t.transaction_date else '?',
-         'type': t.transaction_type, 'amount': float(t.amount), 'currency': t.currency,
-         'merchant': t.merchant_name or '', 'card': t.card.card_name if t.card else 'Cash',
-         'last4': t.card.card_last_four if t.card else '', 'category': t.category or '',
-         'approval': t.approval_status if hasattr(t, 'approval_status') else None}
-        for t in list(all_txns_list[:150])
-    ]
+        # Category breakdown (all time, top 15)
+        EXPENSE_TYPES = ['PURCHASE', 'CARD_PAYMENT', 'CASH_WITHDRAWAL', 'CASH_ADVANCE',
+                         'BALANCE_TRANSFER', 'INSTALLMENT_PRINCIPAL', 'BANK_FEE',
+                         'FINANCE_CHARGE', 'FOREIGN_EXCHANGE_FEE', 'QUASI_CASH']
+        category_totals = list(
+            all_txns_qs.filter(transaction_type__in=EXPENSE_TYPES)
+            .values('category').annotate(total=Sum('amount'), cnt=Count('id'))
+            .order_by('-total')[:15]
+        )
 
-    # Cash balance
-    cash_qs = CashEntry.objects.filter(user=request.user, is_deleted=False)
-    cash_in = cash_qs.filter(entry_type='income').aggregate(s=Sum('amount'))['s'] or 0
-    cash_out = cash_qs.filter(entry_type='expense').aggregate(s=Sum('amount'))['s'] or 0
-    cash_balance = float(cash_in - cash_out)
+        # Monthly spending (last 6 months)
+        from datetime import date as _date, timedelta as _td
+        six_ago = _date.today().replace(day=1) - _td(days=180)
+        monthly_data = list(
+            all_txns_qs.filter(transaction_date__date__gte=six_ago)
+            .annotate(month=TruncMonth('transaction_date'))
+            .values('month', 'transaction_type')
+            .annotate(total=Sum('amount'))
+            .order_by('month')
+        )
+        monthly_map: dict = {}
+        for row in monthly_data:
+            if not row['month']:
+                continue
+            key = row['month'].strftime('%Y-%m')
+            if key not in monthly_map:
+                monthly_map[key] = {'month': key, 'purchases': 0.0, 'payments': 0.0, 'refunds': 0.0}
+            t = row['transaction_type']
+            if t in ('PURCHASE', 'CARD_PAYMENT', 'CASH_WITHDRAWAL', 'CASH_ADVANCE',
+                     'BALANCE_TRANSFER', 'INSTALLMENT_PRINCIPAL', 'BANK_FEE',
+                     'FINANCE_CHARGE', 'FOREIGN_EXCHANGE_FEE', 'QUASI_CASH'):
+                monthly_map[key]['purchases'] += float(row['total'])
+            elif t in ('WALLET_TOPUP', 'TRANSFER'):
+                monthly_map[key]['payments'] += float(row['total'])
+            elif t in ('REFUND', 'CASHBACK', 'REWARD_CREDIT', 'REVERSAL', 'CHARGEBACK', 'ADJUSTMENT'):
+                monthly_map[key]['refunds'] += float(row['total'])
 
-    # Imported statements (last 20)
-    from .models import Statement as _Statement
-    stmts_qs = _Statement.objects.filter(user=request.user).select_related('card').order_by('-imported_at')[:20]
-    statements_context = [{
-        'bank': s.bank_name,
-        'card': s.card_name,
-        'last_four': s.card_last_four,
-        'period': f"{s.statement_period_from} → {s.statement_period_to}" if s.statement_period_from else None,
-        'statement_balance': float(s.statement_balance) if s.statement_balance else None,
-        'available': float(s.available_balance) if s.available_balance else None,
-        'credit_limit': float(s.credit_limit) if s.credit_limit else None,
-        'due_date': s.payment_due_full_date.isoformat() if s.payment_due_full_date else None,
-        'min_payment': float(s.minimum_payment) if s.minimum_payment else None,
-        'txns_imported': s.transactions_imported,
-        'imported_at': s.imported_at.strftime('%Y-%m-%d'),
-    } for s in stmts_qs]
+        cards_context = []
+        for card in user_cards:
+            cid = str(card.id)
+            ct = card_totals.get(cid, {})
+            net_from_txns = ct.get('purchases', 0) + ct.get('withdrawals', 0) - ct.get('payments', 0) - ct.get('refunds', 0)
+            stored_balance = float(card.current_balance) if card.current_balance else None
+            latest_txn = card_latest.get(cid)
+            card_info = {
+                'id': cid,
+                'name': card.card_name, 'bank': card.bank_name,
+                'type': card.card_type, 'last_four': card.card_last_four,
+                'network': card.card_network,
+                'credit_limit': float(card.credit_limit) if card.credit_limit else None,
+                'stored_balance': stored_balance,
+                'computed_balance_from_transactions': round(net_from_txns, 2),
+                'available_balance': float(card.available_balance) if card.available_balance else None,
+                'currency': card.balance_currency,
+                'payment_due_date': card.payment_due_date,
+                'statement_date': card.statement_date,
+                'minimum_payment': float(card.minimum_payment) if card.minimum_payment else None,
+                'min_payment_pct': float(card.minimum_payment_percentage) if card.minimum_payment_percentage else None,
+                'txn_summary': {
+                    'total_purchases': round(ct.get('purchases', 0), 2),
+                    'total_withdrawals': round(ct.get('withdrawals', 0), 2),
+                    'total_payments': round(ct.get('payments', 0), 2),
+                    'total_refunds': round(ct.get('refunds', 0), 2),
+                    'transaction_count': ct.get('count', 0),
+                    'latest_transaction': latest_txn.strftime('%Y-%m-%d') if latest_txn else None,
+                },
+            }
+            if card.card_benefits:
+                try:
+                    card_info['benefits'] = json.loads(card.card_benefits)
+                except json.JSONDecodeError:
+                    pass
+            cards_context.append(card_info)
 
-    # Previous messages for context (last 20)
-    prev_msgs = list(ChatMessage.objects.filter(session=session).order_by('-created_at')[:21])
-    conversation = [{'role': m.role, 'content': m.content} for m in reversed(prev_msgs) if not (m.role == 'user' and m.content == user_message)]
-    # Remove the user message we just saved from conversation (it will be added separately)
-    if conversation and conversation[-1]['role'] == 'user' and conversation[-1]['content'] == user_message:
-        conversation.pop()
+        # ALL transactions — compact format to stay within context limits
+        all_txns_list = all_txns_qs.select_related('card').order_by('-transaction_date')
+        txn_context = [
+            f"{t.transaction_date.strftime('%Y-%m-%d') if t.transaction_date else '?'}|{t.transaction_type}|{float(t.amount):.2f}|{t.currency}|{t.merchant_name or ''}|{t.card.card_name if t.card else 'Cash'}|{t.card.card_last_four if t.card else ''}|{t.category or ''}"
+            for t in all_txns_list
+        ]
+        # Last 150 transactions with IDs (for delete/update by AI)
+        recent_txns_with_ids = [
+            {'id': str(t.id), 'date': t.transaction_date.strftime('%Y-%m-%d') if t.transaction_date else '?',
+             'type': t.transaction_type, 'amount': float(t.amount), 'currency': t.currency,
+             'merchant': t.merchant_name or '', 'card': t.card.card_name if t.card else 'Cash',
+             'last4': t.card.card_last_four if t.card else '', 'category': t.category or '',
+             'approval': t.approval_status if hasattr(t, 'approval_status') else None}
+            for t in list(all_txns_list[:150])
+        ]
 
-    # Build card ID map for action matching
-    card_id_map = {}
-    for card in user_cards:
-        card_id_map[card.card_name.lower()] = str(card.id)
-        if card.card_last_four:
-            card_id_map[card.card_last_four] = str(card.id)
+        # Cash balance
+        cash_qs = CashEntry.objects.filter(user=request.user, is_deleted=False)
+        cash_in = cash_qs.filter(entry_type='income').aggregate(s=Sum('amount'))['s'] or 0
+        cash_out = cash_qs.filter(entry_type='expense').aggregate(s=Sum('amount'))['s'] or 0
+        cash_balance = float(cash_in - cash_out)
+
+        # Imported statements (last 20)
+        from .models import Statement as _Statement
+        stmts_qs = _Statement.objects.filter(user=request.user).select_related('card').order_by('-imported_at')[:20]
+        statements_context = [{
+            'bank': s.bank_name,
+            'card': s.card_name,
+            'last_four': s.card_last_four,
+            'period': f"{s.statement_period_from} → {s.statement_period_to}" if s.statement_period_from else None,
+            'statement_balance': float(s.statement_balance) if s.statement_balance else None,
+            'available': float(s.available_balance) if s.available_balance else None,
+            'credit_limit': float(s.credit_limit) if s.credit_limit else None,
+            'due_date': s.payment_due_full_date.isoformat() if s.payment_due_full_date else None,
+            'min_payment': float(s.minimum_payment) if s.minimum_payment else None,
+            'txns_imported': s.transactions_imported,
+            'imported_at': s.imported_at.strftime('%Y-%m-%d'),
+        } for s in stmts_qs]
+
+        # Previous messages for context (last 20)
+        prev_msgs = list(ChatMessage.objects.filter(session=session).order_by('-created_at')[:21])
+        conversation = [{'role': m.role, 'content': m.content} for m in reversed(prev_msgs) if not (m.role == 'user' and m.content == user_message)]
+        if conversation and conversation[-1]['role'] == 'user' and conversation[-1]['content'] == user_message:
+            conversation.pop()
+
+        # Build card ID map for action matching
+        card_id_map = {}
+        for card in user_cards:
+            card_id_map[card.card_name.lower()] = str(card.id)
+            if card.card_last_four:
+                card_id_map[card.card_last_four] = str(card.id)
+
+    except Exception as ctx_err:
+        logger.error('chat_send: context build failed: %s', ctx_err, exc_info=True)
+        ChatMessage.objects.create(session=session, role='assistant', content='عذراً، حدث خطأ في تحميل بياناتك. حاول مرة أخرى.')
+        return Response({'response': 'عذراً، حدث خطأ في تحميل بياناتك. حاول مرة أخرى.', 'session_id': str(session.id), 'actions': []})
 
     today_str = timezone.now().strftime('%Y-%m-%d')
     system_prompt = f"""أنت CardVault AI — المساعد المالي الذكي لشركة ال يافور للنقليات والمقاولات، أبوظبي، الإمارات العربية المتحدة.

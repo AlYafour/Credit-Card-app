@@ -88,14 +88,15 @@ WSGI_APPLICATION = 'cardvault.wsgi.application'
 DATABASE_URL = config('DATABASE_URL', default='')
 
 if DATABASE_URL:
-    # Production (Render, Heroku, etc.)
-    DATABASES = {
-        'default': dj_database_url.config(
-            default=DATABASE_URL,
-            conn_max_age=600,
-            conn_health_checks=True,
-        )
-    }
+    # Production — Neon / Railway / Render
+    _db = dj_database_url.config(
+        default=DATABASE_URL,
+        conn_max_age=0,        # 0 = no persistent connections (required for Neon PgBouncer)
+        conn_health_checks=False,
+    )
+    # Neon uses PgBouncer in transaction mode — server-side cursors must be disabled
+    _db['DISABLE_SERVER_SIDE_CURSORS'] = config('DISABLE_SERVER_SIDE_CURSORS', default='True', cast=bool)
+    DATABASES = {'default': _db}
 else:
     USE_SQLITE = config('USE_SQLITE', default='True', cast=bool)
     POSTGRES_HOST = config('POSTGRES_HOST', default='localhost')
