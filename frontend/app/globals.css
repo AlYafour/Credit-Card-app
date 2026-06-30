@@ -10666,3 +10666,184 @@ table tbody tr:hover {
   box-shadow: 0 0 0 3px rgba(194,156,53,0.18) !important;
   border-color: var(--primary) !important;
 }
+
+/* ============================================
+   STATEMENT BACKGROUND PROCESSING BADGE
+   ============================================ */
+
+.stmt-bg-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 20px;
+  padding: 5px 12px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(194,156,53,0.4);
+  transition: all 0.2s ease;
+  animation: stmt-badge-pulse 2s ease-in-out infinite;
+}
+
+.stmt-bg-badge:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(194,156,53,0.5);
+}
+
+@keyframes stmt-badge-pulse {
+  0%, 100% { box-shadow: 0 2px 8px rgba(194,156,53,0.4); }
+  50%       { box-shadow: 0 2px 16px rgba(194,156,53,0.7); }
+}
+
+.stmt-bg-spin {
+  animation: spin 1s linear infinite;
+}
+
+.stmt-bg-text {
+  min-width: 14px;
+  text-align: center;
+}
+
+/* ============================================
+   STATEMENT PAGE — RICH FILE CARDS
+   ============================================ */
+
+.stmt-file-card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border-color 0.2s ease;
+}
+
+.stmt-file-card.is-done    { border-color: rgba(22,163,74,0.3);  background: var(--success-bg); }
+.stmt-file-card.is-error   { border-color: rgba(220,38,38,0.3);  background: var(--danger-bg);  }
+.stmt-file-card.is-pw      { border-color: rgba(245,158,11,0.3); background: rgba(245,158,11,0.04); }
+.stmt-file-card.is-process { border-color: var(--primary);       background: var(--primary-bg); }
+
+.stmt-file-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+
+.stmt-file-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  font-size: 0.88rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stmt-file-meta {
+  font-size: 0.73rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+/* Rich card info panel */
+.stmt-card-info {
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--border-light);
+}
+
+.stmt-card-info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.stmt-bank-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stmt-card-number {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-family: monospace;
+  letter-spacing: 0.05em;
+}
+
+.stmt-period {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stmt-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.stmt-info-cell {
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: var(--space-2) var(--space-3);
+  text-align: center;
+}
+
+.stmt-info-cell-value {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.stmt-info-cell-label {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Duplicate transaction row */
+.stmt-txn-duplicate {
+  background: rgba(245,158,11,0.06) !important;
+}
+
+.stmt-dup-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: rgba(245,158,11,0.15);
+  color: #d97706;
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Duplicate summary bar */
+.stmt-dup-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: rgba(245,158,11,0.08);
+  border: 1px solid rgba(245,158,11,0.25);
+  border-radius: var(--radius);
+  font-size: 0.8rem;
+  color: #d97706;
+  margin-bottom: var(--space-3);
+}
+
+[data-theme="dark"] .stmt-info-cell {
+  background: var(--bg-secondary);
+}

@@ -7,6 +7,7 @@ import { User, LogOut, Moon, Sun } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { getResolvedTheme, setTheme } from '@/lib/theme';
 import LanguageSwitcher from './LanguageSwitcher';
+import StatementBgBadge from './StatementBgBadge';
 
 export default function Navbar() {
   const router = useRouter();
@@ -66,6 +67,8 @@ export default function Navbar() {
     <nav className="navbar" role="banner" aria-label="Top navigation">
       <div className="navbar-content">
         <div className="navbar-actions">
+          <StatementBgBadge />
+
           <button
             onClick={toggleTheme}
             className="btn btn-secondary btn-icon-only"
