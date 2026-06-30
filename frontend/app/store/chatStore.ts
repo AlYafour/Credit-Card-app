@@ -14,7 +14,7 @@ interface ChatState {
   toggleChat: () => void;
   openChat: () => void;
   closeChat: () => void;
-  sendMessage: (message: string, image?: string) => Promise<void>;
+  sendMessage: (message: string, image?: string, attachmentName?: string) => Promise<void>;
   loadSessions: () => Promise<void>;
   loadMessages: (sessionId: string) => Promise<void>;
   startNewSession: () => void;
@@ -33,9 +33,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
   openChat: () => set({ isOpen: true }),
   closeChat: () => set({ isOpen: false }),
 
-  sendMessage: async (message: string, image?: string) => {
+  sendMessage: async (message: string, image?: string, attachmentName?: string) => {
     const { currentSessionId } = get();
-    set((s) => ({ messages: [...s.messages, { role: 'user', content: message }], isSending: true }));
+    set((s) => ({ messages: [...s.messages, { role: 'user', content: message, attachmentName }], isSending: true }));
     try {
       const res = await chatAPI.send(message, currentSessionId || undefined, image);
       set((s) => ({

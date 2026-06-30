@@ -2327,13 +2327,14 @@ def chat_send(request):
         import base64 as _b64_mod, re as _re
         try:
             raw_pdf = _b64_mod.b64decode(image_b64)
-            # Extract candidate passwords (sequences of 4+ digits or quoted strings)
-            passwords = _re.findall(r'\b\d{4,}\b|["\']([^"\']{4,})["\']', user_message)
-            passwords = [p for p in passwords if p]
+            # Extract candidate passwords: 4+ digit sequences + quoted strings
+            digit_pwds = _re.findall(r'\b(\d{4,})\b', user_message)
+            quoted_pwds = _re.findall(r'["\']([^"\']{4,})["\']', user_message)
+            passwords = list(dict.fromkeys(digit_pwds + quoted_pwds))
             import pikepdf
             try:
                 pikepdf.open(io.BytesIO(raw_pdf))  # try without password first
-            except pikepdf._core.PasswordError:
+            except pikepdf.PasswordError:
                 decrypted = None
                 for pwd in passwords:
                     try:

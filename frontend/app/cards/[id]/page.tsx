@@ -28,14 +28,14 @@ import {
   CheckCircle,
   Upload,
 } from 'lucide-react';
-import { extractCardId, getCardUrl } from '@/lib/utils';
+import { extractCardId, getCardUrl, translateCategory } from '@/lib/utils';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 export default function CardDetailPage() {
   const router = useRouter();
   const params = useParams();
   const { isAuthenticated, loadUser } = useAuthStore();
-  const { t, isRTL } = useTranslations();
+  const { t, locale, isRTL } = useTranslations();
   const [card, setCard] = useState<Card | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -374,7 +374,7 @@ export default function CardDetailPage() {
                             </span>
                             <span className="transaction-date">{format(new Date(txn.transaction_date), 'MMM dd, yyyy')}</span>
                             {txn.category && (
-                              <span className="category-badge">{txn.category}</span>
+                              <span className="category-badge">{translateCategory(txn.category, locale)}</span>
                             )}
                           </div>
                         </div>

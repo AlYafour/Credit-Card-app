@@ -8,6 +8,7 @@ import { transactionsAPI, Transaction } from '@/app/api/transactions';
 import { cardsAPI, Card } from '@/app/api/cards';
 import Layout from '@/components/Layout';
 import { useTranslations } from '@/lib/i18n';
+import { translateCategory } from '@/lib/utils';
 import { formatAmount } from '@/lib/formatNumber';
 import CurrencySymbol from '@/components/ui/CurrencySymbol';
 import toast from 'react-hot-toast';
@@ -150,7 +151,7 @@ export default function TransactionsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isAuthenticated, loadUser } = useAuthStore();
-  const { t, isRTL } = useTranslations();
+  const { t, locale, isRTL } = useTranslations();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
@@ -737,7 +738,7 @@ export default function TransactionsPage() {
                           )}
                           <div className="txn-badges">
                             {txn.category && (
-                              <span className="category-badge">{txn.category}</span>
+                              <span className="category-badge">{translateCategory(txn.category, locale)}</span>
                             )}
                             {expType && expType !== 'unclassified' && (
                               <span className="expense-type-badge" data-expense={expType}>

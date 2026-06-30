@@ -245,7 +245,7 @@ export default function ChatPanel() {
 
     // For PDFs, send base64 as image to AI (Gemini supports PDF inline)
     const imageToSend = imagePreview || (attachedFile && !isPdf ? attachedFile.base64 : null) || (isPdf ? attachedFile?.base64 : null);
-    sendMessage(text, imageToSend || undefined);
+    sendMessage(text, imageToSend || undefined, attachedFile?.name);
     setInput('');
     if (inputRef.current) { inputRef.current.style.height = 'auto'; }
     setImagePreview(null);
@@ -411,7 +411,12 @@ export default function ChatPanel() {
                         </ReactMarkdown>
                       </div>
                     ) : (
-                      <span className="chat-msg-text">{msg.content}</span>
+                      <span className="chat-msg-text">
+                        {msg.content}
+                        {msg.attachmentName && (
+                          <span className="chat-msg-attachment">📎 {msg.attachmentName}</span>
+                        )}
+                      </span>
                     )}
                     {msg.role === 'assistant' && ttsSupported && (
                       <button

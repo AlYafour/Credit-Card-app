@@ -5,6 +5,7 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   created_at?: string;
+  attachmentName?: string;
 }
 
 export interface ChatSession {

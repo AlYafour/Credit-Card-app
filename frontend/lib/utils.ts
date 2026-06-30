@@ -1,3 +1,36 @@
+const CATEGORY_AR: Record<string, string> = {
+  food: 'طعام',
+  restaurants: 'مطاعم',
+  groceries: 'بقالة',
+  travel: 'سفر',
+  transport: 'مواصلات',
+  transportation: 'مواصلات',
+  fuel: 'وقود',
+  shopping: 'تسوق',
+  services: 'خدمات',
+  technology: 'تكنولوجيا',
+  electronics: 'إلكترونيات',
+  healthcare: 'رعاية صحية',
+  health: 'صحة',
+  entertainment: 'ترفيه',
+  education: 'تعليم',
+  utilities: 'مرافق',
+  hotels: 'فنادق',
+  insurance: 'تأمين',
+  banking: 'خدمات بنكية',
+  telecoms: 'اتصالات',
+  telecom: 'اتصالات',
+  government: 'جهات حكومية',
+  charity: 'تبرعات',
+  subscriptions: 'اشتراكات',
+  other: 'أخرى',
+};
+
+export function translateCategory(category: string, locale: string): string {
+  if (locale !== 'ar') return category;
+  return CATEGORY_AR[category.toLowerCase()] ?? category;
+}
+
 /**
  * Convert a string to a URL-friendly slug
  */
