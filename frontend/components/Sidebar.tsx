@@ -18,6 +18,7 @@ import {
   Store,
   ShoppingBasket,
   Users,
+  BotMessageSquare,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useTranslations } from '@/lib/i18n';
@@ -34,6 +35,7 @@ export default function Sidebar({ userEmail, onLogout }: SidebarProps) {
 
   const menuItems = [
     { href: '/dashboard', label: t('navigation.dashboard'), icon: LayoutDashboard, key: 'dashboard' },
+    { href: '/chat', label: locale === 'ar' ? 'المساعد الذكي' : 'AI Assistant', icon: BotMessageSquare, key: 'chat' },
     { href: '/cards', label: t('navigation.cards'), icon: CreditCard, key: 'cards' },
     { href: '/transactions', label: t('navigation.transactions'), icon: Receipt, key: 'transactions' },
     { href: '/merchants', label: t('navigation.merchants' as any) || 'Merchants', icon: Store, key: 'merchants' },
