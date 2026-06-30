@@ -2353,6 +2353,55 @@ def chat_send(request):
         except Exception as pdf_err:
             logger.warning('chat_send: PDF pre-processing error: %s', pdf_err)
 
+    # ── PDF pre-extraction ─────────────────────────────────────────────────────
+    # Instead of sending the raw PDF to the chat AI (unreliable), extract
+    # transactions first using a dedicated Claude call, then pass plain text.
+    user_message_for_ai = user_message  # may be augmented below
+    if image_mime == 'application/pdf' and image_b64 and anthropic_key:
+        try:
+            import anthropic as _anth_ext
+            import re as _re_ext
+            _ext_client = _anth_ext.Anthropic(api_key=anthropic_key)
+            _ext_prompt = (
+                'You are a bank statement parser. Extract ALL transactions from this PDF.\n'
+                'Return ONLY valid JSON (no markdown fences), exactly this structure:\n'
+                '{"card_info":{"bank_name":"","card_last_four":"","statement_balance":null,'
+                '"payment_due_full_date":null,"currency":"AED"},'
+                '"transactions":[{"date":"YYYY-MM-DD","merchant":"","amount":0.00,'
+                '"type":"purchase","currency":"AED","category":""}]}'
+            )
+            _ext_msg = _anth_ext.Anthropic(api_key=anthropic_key).messages.create(
+                model='claude-sonnet-4-6', max_tokens=8192,
+                messages=[{'role': 'user', 'content': [
+                    {'type': 'document', 'source': {'type': 'base64', 'media_type': 'application/pdf', 'data': image_b64}},
+                    {'type': 'text', 'text': _ext_prompt},
+                ]}],
+                extra_headers={'anthropic-beta': 'pdfs-2024-09-25'},
+            )
+            _raw = _ext_msg.content[0].text.strip()
+            # Strip markdown fences if present
+            _fence = _re_ext.search(r'```(?:json)?\s*\n?(.*?)\n?\s*```', _raw, _re_ext.DOTALL)
+            if _fence:
+                _raw = _fence.group(1).strip()
+            if not _raw.startswith('{'):
+                _jm = _re_ext.search(r'\{.*\}', _raw, _re_ext.DOTALL)
+                if _jm:
+                    _raw = _jm.group(0)
+            _extracted = json.loads(_raw)
+            _txn_count = len(_extracted.get('transactions', []))
+            user_message_for_ai = (
+                user_message + '\n\n'
+                '[الكشف البنكي المرفق — استُخرج تلقائياً ('
+                + str(_txn_count) + ' معاملة):\n'
+                + json.dumps(_extracted, ensure_ascii=False, default=str) + ']'
+            )
+            image_b64 = None   # PDF extracted — no need to send raw file to main AI
+            image_mime = None
+            logger.info('chat_send: PDF pre-extracted %d txns', _txn_count)
+        except Exception as _pdf_ex:
+            logger.warning('chat_send: PDF pre-extraction failed (%s) — trying direct', _pdf_ex)
+            # Fall through: keep image_b64/image_mime for direct PDF passing
+
     # Get or create session
     if session_id:
         try:
@@ -2663,7 +2712,7 @@ def chat_send(request):
                 'parts': [{'text': msg['content']}]
             })
         # Build user message parts (text + optional image)
-        user_parts = [{'text': user_message}]
+        user_parts = [{'text': user_message_for_ai}]
         if image_b64 and image_mime:
             user_parts.append({
                 'inline_data': {
@@ -2735,12 +2784,12 @@ def chat_send(request):
                     },
                 }
                 user_content = [
-                    {'type': 'text', 'text': user_message},
+                    {'type': 'text', 'text': user_message_for_ai},
                     file_block,
                 ]
                 claude_msgs.append({'role': 'user', 'content': user_content})
             else:
-                claude_msgs.append({'role': 'user', 'content': user_message})
+                claude_msgs.append({'role': 'user', 'content': user_message_for_ai})
             create_kwargs = dict(
                 model='claude-sonnet-4-6', max_tokens=8192,
                 system=system_prompt, messages=claude_msgs,
