@@ -7,13 +7,17 @@ const api = axios.create({
   },
 });
 
-// Add token to requests
+// Add token to requests + ensure trailing slash for Django
 api.interceptors.request.use((config) => {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('access_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+  }
+  // Django requires trailing slash; add it when calling Railway directly
+  if (config.url && !config.url.endsWith('/') && !config.url.includes('?')) {
+    config.url = config.url + '/';
   }
   return config;
 });
