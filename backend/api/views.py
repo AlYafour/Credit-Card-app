@@ -2678,23 +2678,39 @@ def chat_send(request):
             'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 8192}
         }).encode('utf-8')
 
+        gemini_timeout = 90 if (image_b64 and image_mime) else 30
         for attempt in range(3):
             try:
                 req = urllib.request.Request(gemini_url, data=payload,
                     headers={'Content-Type': 'application/json'}, method='POST')
-                with urllib.request.urlopen(req, timeout=30) as resp:
+                with urllib.request.urlopen(req, timeout=gemini_timeout) as resp:
                     data = json.loads(resp.read().decode('utf-8'))
-                    candidates = data.get('candidates', [])
-                    if candidates:
-                        parts = candidates[0].get('content', {}).get('parts', [])
-                        if parts:
-                            ai_response = parts[0].get('text', '').strip()
+                    # Handle blocked prompt (no candidates)
+                    if not data.get('candidates'):
+                        block = data.get('promptFeedback', {}).get('blockReason', '')
+                        if block:
+                            logger.warning('Chat Gemini blocked: %s', block)
+                        break
+                    candidates = data['candidates']
+                    if candidates[0].get('finishReason') not in ('STOP', 'MAX_TOKENS', None, ''):
+                        logger.warning('Chat Gemini finish: %s', candidates[0].get('finishReason'))
+                        break
+                    parts = candidates[0].get('content', {}).get('parts', [])
+                    # gemini-2.5-flash may include thinking blocks — skip them
+                    for part in parts:
+                        if part.get('text') and not part.get('thought'):
+                            ai_response = part['text'].strip()
+                            break
                 break
             except urllib.error.HTTPError as e:
                 if e.code == 429 and attempt < 2:
                     time.sleep((attempt + 1) * 2)
                     continue
-                logger.warning('Chat Gemini HTTP %d', e.code)
+                try:
+                    err_body = e.read().decode('utf-8', errors='replace')[:400]
+                except Exception:
+                    err_body = ''
+                logger.warning('Chat Gemini HTTP %d: %s', e.code, err_body)
                 break
             except Exception as e:
                 logger.warning('Chat Gemini error: %s', str(e))
@@ -2707,6 +2723,7 @@ def chat_send(request):
             client = anthropic.Anthropic(api_key=anthropic_key)
             claude_msgs = [{'role': m['role'], 'content': m['content']} for m in conversation]
             # Build user content (text + optional image)
+            is_pdf_request = bool(image_b64 and image_mime == 'application/pdf')
             if image_b64 and image_mime:
                 is_pdf = image_mime == 'application/pdf'
                 file_block = {
@@ -2724,10 +2741,14 @@ def chat_send(request):
                 claude_msgs.append({'role': 'user', 'content': user_content})
             else:
                 claude_msgs.append({'role': 'user', 'content': user_message})
-            message = client.messages.create(
+            create_kwargs = dict(
                 model='claude-sonnet-4-6', max_tokens=8192,
                 system=system_prompt, messages=claude_msgs,
             )
+            if is_pdf_request:
+                # PDF support requires beta header (all SDK versions)
+                create_kwargs['extra_headers'] = {'anthropic-beta': 'pdfs-2024-09-25'}
+            message = client.messages.create(**create_kwargs)
             ai_response = message.content[0].text.strip()
         except Exception as e:
             logger.warning('Chat Claude error: %s', str(e))
