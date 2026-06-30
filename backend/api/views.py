@@ -1463,7 +1463,9 @@ class CardViewSet(viewsets.ModelViewSet):
         # Save original uploaded file if provided
         if file_data_raw:
             import base64 as _b64
-            import os as _os
+            from io import BytesIO
+            from django.core.files.base import ContentFile
+            from django.core.files.storage import default_storage
             raw = file_data_raw
             if ',' in raw:
                 _, raw = raw.split(',', 1)
@@ -1474,12 +1476,9 @@ class CardViewSet(viewsets.ModelViewSet):
                     'image/png': 'png', 'image/webp': 'webp',
                 }
                 ext = ext_map.get(file_type_str, 'pdf')
-                rel_path = f'statements/{stmt_obj.id}.{ext}'
-                abs_path = _os.path.join(django_settings.MEDIA_ROOT, rel_path)
-                _os.makedirs(_os.path.dirname(abs_path), exist_ok=True)
-                with open(abs_path, 'wb') as fh:
-                    fh.write(decoded_file)
-                stmt_obj.file_path = rel_path
+                storage_path = f'statements/{stmt_obj.id}.{ext}'
+                saved_path = default_storage.save(storage_path, ContentFile(decoded_file))
+                stmt_obj.file_path = saved_path
                 stmt_obj.file_name = file_name_str
                 stmt_obj.file_type = file_type_str
                 stmt_obj.save(update_fields=['file_path', 'file_name', 'file_type'])
@@ -1630,8 +1629,8 @@ def statement_transactions(request, statement_id):
 @permission_classes([IsAuthenticated])
 def statement_file(request, statement_id):
     """Serve the original uploaded file for a statement."""
-    import os as _os
     from django.http import FileResponse, Http404
+    from django.core.files.storage import default_storage
     from .models import Statement as _Statement
 
     try:
@@ -1642,12 +1641,11 @@ def statement_file(request, statement_id):
     if not stmt.file_path:
         raise Http404
 
-    abs_path = _os.path.join(django_settings.MEDIA_ROOT, stmt.file_path)
-    if not _os.path.exists(abs_path):
+    if not default_storage.exists(stmt.file_path):
         raise Http404
 
     content_type = stmt.file_type or 'application/octet-stream'
-    fh = open(abs_path, 'rb')
+    fh = default_storage.open(stmt.file_path, 'rb')
     response = FileResponse(fh, content_type=content_type)
     safe_name = (stmt.file_name or 'statement').replace('"', '')
     response['Content-Disposition'] = f'inline; filename="{safe_name}"'
