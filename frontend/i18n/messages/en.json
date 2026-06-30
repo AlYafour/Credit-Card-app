@@ -377,7 +377,12 @@
     "clearFilters": "Clear filters",
     "showFilters": "Filters",
     "activeFilters": "{count} active",
-    "downloadTemplate": "Download Template"
+    "downloadTemplate": "Download Template",
+    "approvalStatus": "Approval Status",
+    "allApprovalStatuses": "All",
+    "recycleBin": "Recycle Bin",
+    "showDeleted": "Show deleted",
+    "showingDeleted": "✓ Showing deleted"
   },
   "addTransaction": {
     "title": "Add Transaction",

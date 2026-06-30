@@ -620,14 +620,14 @@ export default function TransactionsPage() {
               <div className="filter-item">
                 <label className="filter-label">
                   <CheckCircle size={13} />
-                  {t('transactions.approvalStatus') || 'Approval Status'}
+                  {t('transactions.approvalStatus')}
                 </label>
                 <select className="filter-select" value={approvalStatus} onChange={e => setApprovalStatus(e.target.value)}>
-                  <option value="all">All</option>
-                  <option value="draft">Draft</option>
-                  <option value="submitted">Submitted</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
+                  <option value="all">{t('transactions.allApprovalStatuses')}</option>
+                  <option value="draft">{locale === 'ar' ? 'مسودة' : 'Draft'}</option>
+                  <option value="submitted">{locale === 'ar' ? 'مُرسل' : 'Submitted'}</option>
+                  <option value="approved">{locale === 'ar' ? 'مُوافق عليه' : 'Approved'}</option>
+                  <option value="rejected">{locale === 'ar' ? 'مرفوض' : 'Rejected'}</option>
                 </select>
               </div>
 
@@ -635,14 +635,14 @@ export default function TransactionsPage() {
               <div className="filter-item">
                 <label className="filter-label">
                   <RotateCcw size={13} />
-                  {t('transactions.recycleBin') || 'Show Deleted'}
+                  {t('transactions.recycleBin')}
                 </label>
                 <button
                   className={`btn ${includeDeleted ? 'btn-primary' : 'btn-ghost'}`}
                   style={{ width: '100%' }}
                   onClick={() => { setIncludeDeleted(!includeDeleted); setPage(1); }}
                 >
-                  {includeDeleted ? '✓ Showing deleted' : 'Show deleted'}
+                  {includeDeleted ? t('transactions.showingDeleted') : t('transactions.showDeleted')}
                 </button>
               </div>
             </div>

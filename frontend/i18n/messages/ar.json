@@ -377,7 +377,12 @@
     "clearFilters": "مسح الفلاتر",
     "showFilters": "الفلاتر",
     "activeFilters": "{count} نشط",
-    "downloadTemplate": "تحميل نموذج"
+    "downloadTemplate": "تحميل نموذج",
+    "approvalStatus": "حالة الموافقة",
+    "allApprovalStatuses": "الكل",
+    "recycleBin": "المحذوفات",
+    "showDeleted": "عرض المحذوفات",
+    "showingDeleted": "✓ يعرض المحذوفات"
   },
   "addTransaction": {
     "title": "إضافة معاملة",
