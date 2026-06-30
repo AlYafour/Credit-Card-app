@@ -21,6 +21,7 @@ export const transactionsAPI = {
     transaction_type?: string;
     merchant_name?: string;
     expense_type?: string;
+    category?: string;
     merchant_group_id?: string;
     project_id?: string;
     approval_status?: string;

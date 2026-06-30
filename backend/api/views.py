@@ -1735,6 +1735,10 @@ class TransactionViewSet(viewsets.ModelViewSet):
         if expense_type:
             queryset = queryset.filter(expense_type=expense_type)
 
+        category = self.request.query_params.get('category')
+        if category:
+            queryset = queryset.filter(category__iexact=category)
+
         merchant_group_id = self.request.query_params.get('merchant_group_id')
         if merchant_group_id:
             queryset = queryset.filter(merchant_group_id=merchant_group_id)

@@ -167,6 +167,7 @@ export default function TransactionsPage() {
   const [endDate, setEndDate] = useState('');
   const [merchantSearch, setMerchantSearch] = useState('');
   const [expenseType, setExpenseType] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [basketId, setBasketId] = useState(urlBasketId);
   const [amountMin, setAmountMin] = useState('');
   const [amountMax, setAmountMax] = useState('');
@@ -196,7 +197,7 @@ export default function TransactionsPage() {
     startDate,
     endDate,
     merchantSearch,
-    expenseType !== 'all',
+    categoryFilter !== 'all',
     basketId,
     amountMin,
     amountMax,
@@ -223,7 +224,7 @@ export default function TransactionsPage() {
           start_date: startDate || undefined,
           end_date: endDate || undefined,
           merchant_name: merchantSearch || undefined,
-          expense_type: expenseType !== 'all' ? expenseType : undefined,
+          category: categoryFilter !== 'all' ? categoryFilter : undefined,
           merchant_group_id: basketId || undefined,
           project_id: projectId || undefined,
           approval_status: approvalStatus !== 'all' ? approvalStatus : undefined,
@@ -246,7 +247,7 @@ export default function TransactionsPage() {
     } finally {
       setLoading(false);
     }
-  }, [isAuthenticated, selectedCard, transactionType, startDate, endDate, merchantSearch, expenseType, basketId, projectId, approvalStatus, amountMin, amountMax, sort, page, includeDeleted, t]);
+  }, [isAuthenticated, selectedCard, transactionType, startDate, endDate, merchantSearch, categoryFilter, basketId, projectId, approvalStatus, amountMin, amountMax, sort, page, includeDeleted, t]);
 
   useEffect(() => {
     if (isAuthenticated) loadData();
@@ -258,7 +259,7 @@ export default function TransactionsPage() {
     setStartDate('');
     setEndDate('');
     setMerchantSearch('');
-    setExpenseType('all');
+    setCategoryFilter('all');
     setBasketId('');
     setProjectId('');
     setApprovalStatus('all');
@@ -541,21 +542,39 @@ export default function TransactionsPage() {
                 </div>
               </div>
 
-              {/* Expense type */}
+              {/* Category filter */}
               <div className="filter-item">
                 <label className="filter-label">
-                  {expenseType === 'company' ? <Building2 size={13} /> : <User size={13} />}
-                  {t('transactions.expenseType')}
+                  {locale === 'ar' ? 'التصنيف' : 'Category'}
                 </label>
                 <select
                   className="filter-select"
-                  value={expenseType}
-                  onChange={e => setExpenseType(e.target.value)}
+                  value={categoryFilter}
+                  onChange={e => { setCategoryFilter(e.target.value); setPage(1); }}
                 >
-                  <option value="all">{t('transactions.allExpenseTypes')}</option>
-                  <option value="company">{t('transactions.company')}</option>
-                  <option value="personal">{t('transactions.personal')}</option>
-                  <option value="unclassified">{t('transactions.unclassified')}</option>
+                  <option value="all">{locale === 'ar' ? 'جميع التصنيفات' : 'All Categories'}</option>
+                  <option value="Food">{locale === 'ar' ? 'طعام' : 'Food'}</option>
+                  <option value="Shopping">{locale === 'ar' ? 'تسوق' : 'Shopping'}</option>
+                  <option value="Transport">{locale === 'ar' ? 'مواصلات' : 'Transport'}</option>
+                  <option value="Travel">{locale === 'ar' ? 'سفر' : 'Travel'}</option>
+                  <option value="Fuel">{locale === 'ar' ? 'وقود' : 'Fuel'}</option>
+                  <option value="Utilities">{locale === 'ar' ? 'مرافق' : 'Utilities'}</option>
+                  <option value="Services">{locale === 'ar' ? 'خدمات' : 'Services'}</option>
+                  <option value="Electronics">{locale === 'ar' ? 'إلكترونيات' : 'Electronics'}</option>
+                  <option value="Technology">{locale === 'ar' ? 'تكنولوجيا' : 'Technology'}</option>
+                  <option value="Healthcare">{locale === 'ar' ? 'رعاية صحية' : 'Healthcare'}</option>
+                  <option value="Entertainment">{locale === 'ar' ? 'ترفيه' : 'Entertainment'}</option>
+                  <option value="Education">{locale === 'ar' ? 'تعليم' : 'Education'}</option>
+                  <option value="Telecoms">{locale === 'ar' ? 'اتصالات' : 'Telecoms'}</option>
+                  <option value="Insurance">{locale === 'ar' ? 'تأمين' : 'Insurance'}</option>
+                  <option value="Hotels">{locale === 'ar' ? 'فنادق' : 'Hotels'}</option>
+                  <option value="Government">{locale === 'ar' ? 'جهات حكومية' : 'Government'}</option>
+                  <option value="Charity">{locale === 'ar' ? 'تبرعات' : 'Charity'}</option>
+                  <option value="Subscriptions">{locale === 'ar' ? 'اشتراكات' : 'Subscriptions'}</option>
+                  <option value="Banking">{locale === 'ar' ? 'خدمات بنكية' : 'Banking'}</option>
+                  <option value="Groceries">{locale === 'ar' ? 'بقالة' : 'Groceries'}</option>
+                  <option value="Restaurants">{locale === 'ar' ? 'مطاعم' : 'Restaurants'}</option>
+                  <option value="Other">{locale === 'ar' ? 'أخرى' : 'Other'}</option>
                 </select>
               </div>
 
