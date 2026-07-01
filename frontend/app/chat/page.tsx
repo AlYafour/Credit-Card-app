@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useChatStore } from '@/app/store/chatStore';
 import { useTranslations } from '@/lib/i18n';
+import Layout from '@/components/Layout';
 import {
   Send, Plus, Bot, User as UserIcon, Trash2, Loader2, Mic, MicOff,
   Paperclip, Volume2, VolumeX, MessageSquare, Sparkles, ChevronLeft,
@@ -163,6 +164,8 @@ export default function ChatPage() {
   ];
 
   return (
+    <Layout>
+    <div className="chat-page-container">
     <div className="chat-page-root" dir={isRTL ? 'rtl' : 'ltr'}>
 
       {/* ── Sessions Sidebar ─────────────────────────── */}
@@ -397,5 +400,7 @@ export default function ChatPage() {
         </div>
       </main>
     </div>
+    </div>
+    </Layout>
   );
 }

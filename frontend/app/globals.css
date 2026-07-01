@@ -10863,10 +10863,15 @@ table tbody tr:hover {
    FULL-PAGE CHAT — /chat
    ============================================================ */
 
+/* Pull the chat out of content-wrapper padding */
+.chat-page-container {
+  margin: calc(-1 * var(--space-5)) calc(-1 * var(--space-6));
+}
+
 .chat-page-root {
   display: flex;
-  height: calc(100vh - 0px);
-  max-height: 100vh;
+  height: calc(100vh - 64px);
+  max-height: calc(100vh - 64px);
   max-width: 55vw;
   overflow: hidden;
   background: var(--bg);
