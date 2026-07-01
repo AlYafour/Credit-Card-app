@@ -415,45 +415,32 @@ class CardViewSet(viewsets.ModelViewSet):
         logger.info('Card scan attempt: user=%s ip=%s size=%d',
                      request.user.email, request.META.get('REMOTE_ADDR', '?'), len(decoded))
 
-        prompt_text = (
-            'Read ALL text visible in this card image. Return a JSON object with these fields '
-            '(use null for anything you cannot read):\n'
-            '{"card_number":"digits only no spaces","cardholder_name":"name on card",'
+        # Ask only for non-sensitive fields — Claude refuses to extract full card numbers/CVV
+        safe_prompt = (
+            'You are an OCR assistant. Read the text visible in this payment card image.\n'
+            'Return ONLY a JSON object with these fields (null if not visible):\n'
+            '{"last_four":"last 4 digits of card number only","cardholder_name":"name printed on card",'
             '"expiry_month":"MM","expiry_year":"YY or YYYY",'
-            '"cvv":"3-4 digit code","card_network":"visa/mastercard/amex/discover or null",'
-            '"bank_name":"issuing bank or null"}\n'
+            '"card_network":"visa/mastercard/amex/discover or null","bank_name":"issuing bank name or null"}\n'
             'Return ONLY the JSON object, nothing else.'
         )
 
-        # Claude needs additional context to understand this is a legitimate use case
-        claude_prompt = (
-            'You are an OCR assistant inside a personal finance management app called CardVault. '
-            'The authenticated user is uploading a photo of THEIR OWN card to store it in their '
-            'encrypted personal vault. This is similar to Apple Wallet or Google Pay card scanning. '
-            'The user has explicitly consented to this scan.\n\n'
-            'Please extract the visible text from this card image and return a JSON object with '
-            'these fields (use null for anything not visible):\n'
-            '{"card_number":"digits only no spaces","cardholder_name":"name on card",'
-            '"expiry_month":"MM","expiry_year":"YY or YYYY",'
-            '"cvv":"3-4 digit code","card_network":"visa/mastercard/amex/discover or null",'
-            '"bank_name":"issuing bank or null"}\n'
-            'Return ONLY the JSON object, nothing else.'
-        )
+        prompt_text = safe_prompt
 
         response_text = None
 
-        # ── Try Anthropic Claude first (more accurate for card OCR) ──
+        # ── Try Anthropic Claude first ──
         if anthropic_key:
             try:
                 import anthropic
                 client = anthropic.Anthropic(api_key=anthropic_key)
-                for model_name in ['claude-sonnet-4-6', 'claude-3-5-sonnet-20241022', 'claude-3-5-sonnet-latest']:
+                for model_name in ['claude-sonnet-4-6', 'claude-haiku-4-5-20251001']:
                     try:
                         message = client.messages.create(
-                            model=model_name, max_tokens=1024,
+                            model=model_name, max_tokens=512,
                             messages=[{'role': 'user', 'content': [
                                 {'type': 'image', 'source': {'type': 'base64', 'media_type': media_type, 'data': image_data}},
-                                {'type': 'text', 'text': claude_prompt}
+                                {'type': 'text', 'text': safe_prompt}
                             ]}]
                         )
                         text = message.content[0].text.strip()
@@ -543,27 +530,18 @@ class CardViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_422_UNPROCESSABLE_ENTITY
             )
 
-        # Sanitize output
-        allowed = ['card_number', 'cardholder_name', 'expiry_month', 'expiry_year', 'cvv', 'card_network', 'bank_name']
+        # Sanitize output — only safe fields returned
+        allowed = ['last_four', 'cardholder_name', 'expiry_month', 'expiry_year', 'card_network', 'bank_name']
         sanitized = {}
         for f in allowed:
             val = result.get(f)
             if val is not None and str(val).lower() not in ('null', 'none', ''):
                 sanitized[f] = str(val).strip()
 
-        if sanitized.get('card_number'):
-            sanitized['card_number'] = _re.sub(r'[\s\-]', '', sanitized['card_number'])
-
-        if sanitized.get('card_number') and not sanitized.get('card_network'):
-            cn = sanitized['card_number']
-            if cn.startswith('4'):
-                sanitized['card_network'] = 'visa'
-            elif _re.match(r'^(5[1-5]|2[2-7])', cn):
-                sanitized['card_network'] = 'mastercard'
-            elif _re.match(r'^3[47]', cn):
-                sanitized['card_network'] = 'amex'
-            elif cn.startswith('6'):
-                sanitized['card_network'] = 'discover'
+        # Keep last_four as exactly 4 digits
+        if sanitized.get('last_four'):
+            digits = _re.sub(r'\D', '', sanitized['last_four'])
+            sanitized['last_four'] = digits[-4:] if len(digits) >= 4 else digits
 
         logger.info('Card scan result: user=%s fields=%s', request.user.email, list(sanitized.keys()))
 
